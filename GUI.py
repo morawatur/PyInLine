@@ -1100,10 +1100,15 @@ class TriangulateWidget(QtWidgets.QWidget):
         if curr_img.prev is None:
             print('There is no reference image!')
             return
-        img_list_tmp = imsup.CreateImageListFromImage(curr_img, 2)
-        img_align_list = cross_corr_images(img_list_tmp)
+        img_list_tmp = imsup.CreateImageListFromImage(curr_img.prev, 2)
+        self.get_clicked_coords()
+        df_min = float(self.df_min_input.text())
+        df_max = float(self.df_max_input.text())
+        df_step = float(self.df_step_input.text())
+        img_align_list = cross_corr_images(img_list_tmp, self.btn_grid.n_rows, self.display.frag_coords[1:],
+                                           df_min, df_max, df_step)
         for img in img_align_list:
-            self.insert_image_after_curr(img)
+            self.insert_img_after_curr(img)
 
     def cross_corr_n_images(self):
         n_to_cc = int(self.n_to_cc_input.text())
@@ -1111,15 +1116,17 @@ class TriangulateWidget(QtWidgets.QWidget):
         first_img = imsup.GetFirstImage(curr_img)
         all_img_list = imsup.CreateImageListFromFirstImage(first_img)
         n_imgs = len(all_img_list)
-        if curr_img.numInSeries + n_to_cc > n_imgs:
-            n_to_cc = n_imgs - curr_img.numInSeries
+        if (curr_img.numInSeries - 1) + n_to_cc > n_imgs:
+            n_to_cc = n_imgs - (curr_img.numInSeries - 1)
         img_list_to_cc = imsup.CreateImageListFromImage(curr_img, n_to_cc)
-        df_min = float(self.df_min.text())
-        df_max = float(self.df_max.text())
-        df_step = float(self.df_step.text())
-        img_align_list = cross_corr_images(img_list_to_cc, df_min=df_min, df_max=df_max, df_step=df_step)
+        print(type(img_list_to_cc[0]))
+        df_min = float(self.df_min_input.text())
+        df_max = float(self.df_max_input.text())
+        df_step = float(self.df_step_input.text())
+        img_align_list = cross_corr_images(img_list_to_cc, self.btn_grid.n_rows, self.display.frag_coords[1:],
+                                           df_min, df_max, df_step)
         for img in img_align_list:
-            self.insert_image_after_curr(img)
+            self.insert_img_after_curr(img)
 
     def align_shift(self):
         curr_img = self.display.image
@@ -1293,7 +1300,7 @@ class TriangulateWidget(QtWidgets.QWidget):
 
     def get_clicked_coords(self):
         n_frags = self.btn_grid.count()
-        frag_coords = [ np.sqrt(n_frags) ]
+        frag_coords = [ int(np.sqrt(n_frags)) ]
         for pos in range(n_frags):
             btn = self.btn_grid.itemAt(pos).widget()
             if btn.was_clicked:
@@ -1431,13 +1438,16 @@ def LoadImageSeriesFromFirstFile(imgPath):
 
 # --------------------------------------------------------
 
-def cross_corr_images(img_list, grid_dim=1024, frag_coords=0, df_min=0.0, df_max=10.0, df_step=1.0):
+def cross_corr_images(img_list, n_div, frag_coords, df_min=0.0, df_max=10.0, df_step=1.0):
     img_align_list = imsup.ImageList()
+    img_list[0].shift = [0, 0]
     for img in img_list[1:]:
-        mcf_best = cc.MaximizeMCFCore(img.prev, img, grid_dim, frag_coords,
+        mcf_best = cc.MaximizeMCFCore(img.prev, img, n_div, frag_coords,
                                       df_min, df_max, df_step, use_other_aberrs=False)
-        shift = cc.GetShift(mcf_best)
-        img_shifted = cc.shift_am_ph_image(img, shift)
+        new_shift = cc.GetShift(mcf_best)
+        img.shift = [ sp + sn for sp, sn in zip(img.prev.shift, new_shift) ]
+        # img.shift = list(np.array(img.shift) + np.array(new_shift))
+        img_shifted = cc.shift_am_ph_image(img, img.shift)
         img.defocus = mcf_best.defocus
         img_shifted.defocus = mcf_best.defocus
         img_align_list.append(img_shifted)

@@ -218,7 +218,7 @@ def MaximizeMCF(img1, img2, dfStep0):
 
 # -------------------------------------------------------------------
 
-def MaximizeMCFCore(img1, img2, nDiv, fragCoords, dfStepMin, dfStepMax, dfStepChange, use_other_aberrs=True):
+def MaximizeMCFCore(img1, img2, nDiv, fragCoords, dfStepMin, dfStepMax, dfStepChange, use_other_aberrs=False):
     # defocus parameters are given in nm
     dfStepMin, dfStepMax, dfStepChange = np.array([dfStepMin, dfStepMax, dfStepChange]) * 1e-9
     mcfMax = 0.0
@@ -226,33 +226,21 @@ def MaximizeMCFCore(img1, img2, nDiv, fragCoords, dfStepMin, dfStepMax, dfStepCh
     mcfBest = imsup.Image(img1.height, img1.width, imsup.Image.cmp['CRI'], imsup.Image.mem['GPU'])
     mcfBest.defocus = dfStepBest
 
-    mcfMaxPath = const.ccfMaxDir + const.ccfMaxName + str(img2.numInSeries) + '.txt'
-    mcfMaxFile = open(mcfMaxPath, 'w')
-
     for dfStep in frange(dfStepMin, dfStepMax, dfStepChange):
-        # ctf = prop.CalcTransferFunction(img1.width, img1.px_dim, dfStep)
         if use_other_aberrs:
             ctf = prop.calc_ctf(img1.width, img1.px_dim, dfStep)
         else:
             ctf = prop.calc_ctf(img1.width, img1.px_dim, dfStep, Cs=0, A1=ab.PolarComplex(0, 0),
                                 df_spread=0, conv_angle=0, aperture=0)
-        # ctf.AmPh2ReIm()
-        # ctf = Diff2FFT(ctf)
         img1Prop = prop.PropagateWave(img1, ctf)
-        # mcf = CalcCrossCorrFun(img1Prop, img2)
-        # mcf = CalcPartialCrossCorrFun(img1, img2, nDiv, fragCoords)
         mcf = CalcPartialCrossCorrFun(img1Prop, img2, nDiv, fragCoords)
-        mcfMaxCurr = FindMaxInImage(mcf)
-        # mcf.MoveToCPU()
-        # mcfMaxCurr = np.max(mcf.amPh.am)
-        # mcf.MoveToGPU()
-        mcfMaxFile.write('{0:.0f}\t{1:.3f}\n'.format(dfStep * 1e9, mcfMaxCurr))
+        mcf.MoveToCPU()
+        mcfMaxCurr = np.max(mcf.amPh.am)
         if mcfMaxCurr >= mcfMax:
             mcfMax = mcfMaxCurr
             dfStepBest = dfStep
             mcfBest = mcf
 
-    mcfMaxFile.close()
     mcfBest.defocus = dfStepBest
     print('Best defocus step = {0:.0f} nm'.format(dfStepBest * 1e9))
     return mcfBest
