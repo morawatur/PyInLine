@@ -11,6 +11,7 @@ import ImageSupport as imsup
 import CrossCorr as cc
 import Transform as tr
 import Holo as holo
+import Propagation as prop
 
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
@@ -42,7 +43,7 @@ class MarkButton(QtWidgets.QPushButton):
     def __init__(self, text, width, height, fun):
         super(MarkButton, self).__init__(text)
         self.default_style = 'color:transparent; width:{0}; height:{1}; padding:-1px;'.format(width, height)
-        self.clicked_style = 'background-color:rgb(255, 255, 230); color:transparent; width:{0}; height:{1}; padding:-1px;'.format(width, height)
+        self.clicked_style = 'background-color:rgb(140, 140, 140); color:transparent; width:{0}; height:{1}; padding:-1px;'.format(width, height)
         self.was_clicked = False
         self.do_something = fun
         self.initUI()
@@ -68,7 +69,7 @@ class ButtonGrid(QtWidgets.QGridLayout):
         self.n_cols = n_per_row if n_per_col < 0 else n_per_col
         self.n_rows_min = 1
         self.n_rows_max = 5
-        self.grid_dim_sz = 180
+        self.grid_dim_sz = 120
         self.btn_fun = fun
         self.setContentsMargins(0, 0, 0, 0)
         self.setSpacing(0)
@@ -169,7 +170,7 @@ class LabelExt(QtWidgets.QLabel):
 
         if self.frag_coords[0] > 0:
             qp.setPen(QtCore.Qt.NoPen)
-            qp.setBrush(QtGui.QColor(255, 255, 230, 100))
+            qp.setBrush(QtGui.QColor(240, 240, 240, 100))
             grid_dim = self.frag_coords[0]
             sq_w = int(np.ceil(const.ccWidgetDim / grid_dim))
             for pos in self.frag_coords[1:]:
@@ -222,8 +223,17 @@ class LabelExt(QtWidgets.QLabel):
         self.setPixmap(pixmap)
         self.repaint()
 
-    def changeImage(self, toNext=True, dispAmp=True, dispPhs=False, logScale=False, dispLabs=True, color=False):
-        newImage = self.image.next if toNext else self.image.prev
+    def changeImage(self, dir_to_img=1, dispAmp=True, dispPhs=False, logScale=False, dispLabs=True, color=False):
+        if dir_to_img == 1:
+            newImage = self.image.next
+        elif dir_to_img == -1:
+            newImage = self.image.prev
+        else:
+            curr = self.image
+            while curr.next is not None:
+                curr = curr.next
+            newImage = curr
+
         if newImage is None:
             return
 
@@ -522,23 +532,36 @@ class TriangulateWidget(QtWidgets.QWidget):
 
         self.det_df_checkbox = QtWidgets.QCheckBox('Determine df values', self)
         self.det_df_checkbox.setChecked(False)
-        # self.det_df_checkbox.toggled.connect(self.enable_df_inputs)
+        self.det_df_checkbox.toggled.connect(self.manage_df_inputs)
 
-        df_min_label = QtWidgets.QLabel('df min [nm]', self)
+        self.df_min_label = QtWidgets.QLabel('df min [nm]', self)
         df_max_label = QtWidgets.QLabel('df max [nm]', self)
         df_step_label = QtWidgets.QLabel('delta df [nm]', self)
 
-        df_min_label.setAlignment(QtCore.Qt.AlignCenter)
+        self.df_min_label.setAlignment(QtCore.Qt.AlignCenter)
         df_max_label.setAlignment(QtCore.Qt.AlignCenter)
         df_step_label.setAlignment(QtCore.Qt.AlignCenter)
 
         self.df_min_input = QtWidgets.QLineEdit('0.0', self)
         self.df_max_input = QtWidgets.QLineEdit('0.0', self)
         self.df_step_input = QtWidgets.QLineEdit('0.0', self)
+        self.disable_df_inputs()
 
         fname_label = QtWidgets.QLabel('File name', self)
         self.fname_input = QtWidgets.QLineEdit(self.display.image.name, self)
         self.fname_input.setFixedWidth(150)
+
+        in_focus_label = QtWidgets.QLabel('In-focus', self)
+        self.in_focus_input = QtWidgets.QLineEdit('1', self)
+
+        n_to_ewr_label = QtWidgets.QLabel('Num. of images to use', self)
+        self.n_to_ewr_input = QtWidgets.QLineEdit('1', self)
+
+        n_iters_label = QtWidgets.QLabel('Num. of iterations', self)
+        self.n_iters_input = QtWidgets.QLineEdit('10', self)
+
+        run_ewr_button = QtWidgets.QPushButton('Run reconstruction', self)
+        run_ewr_button.clicked.connect(self.run_ewr)
 
         aperture_label = QtWidgets.QLabel('Aperture [px]', self)
         self.aperture_input = QtWidgets.QLineEdit(str(const.aperture), self)
@@ -604,7 +627,7 @@ class TriangulateWidget(QtWidgets.QWidget):
         grid_cross_corr.addWidget(mesh_up_button, 0, 1)
         grid_cross_corr.addWidget(mesh_down_button, 0, 2)
         grid_cross_corr.addWidget(self.det_df_checkbox, 0, 3)
-        grid_cross_corr.addWidget(df_min_label, 1, 3)
+        grid_cross_corr.addWidget(self.df_min_label, 1, 3)
         grid_cross_corr.addWidget(df_max_label, 2, 3)
         grid_cross_corr.addWidget(df_step_label, 3, 3)
         grid_cross_corr.addWidget(self.df_min_input, 1, 4)
@@ -616,21 +639,24 @@ class TriangulateWidget(QtWidgets.QWidget):
         grid_cross_corr.addWidget(shift_button, 3, 1)
         grid_cross_corr.addWidget(warp_button, 3, 2)
 
-        grid_holo = QtWidgets.QGridLayout()
-        grid_holo.addWidget(aperture_label, 0, 0)
-        grid_holo.addWidget(self.aperture_input, 1, 0)
-        grid_holo.addWidget(hann_win_label, 0, 1)
-        grid_holo.addWidget(self.hann_win_input, 1, 1)
-        grid_holo.addWidget(sum_button, 3, 1)
-        grid_holo.addWidget(diff_button, 3, 2)
-        grid_holo.addWidget(amp_factor_label, 0, 2)
-        grid_holo.addWidget(self.amp_factor_input, 1, 2)
-        grid_holo.addWidget(amplify_button, 2, 2)
-
-        grid_plot = QtWidgets.QGridLayout()
-        grid_plot.addWidget(int_width_label, 0, 1)
-        grid_plot.addWidget(self.int_width_input, 1, 1)
-        grid_plot.addWidget(plot_button, 2, 1)
+        grid_ewr = QtWidgets.QGridLayout()
+        grid_ewr.addWidget(in_focus_label, 0, 0)
+        grid_ewr.addWidget(self.in_focus_input, 1, 0)
+        grid_ewr.addWidget(n_to_ewr_label, 2, 0)
+        grid_ewr.addWidget(self.n_to_ewr_input, 3, 0)
+        grid_ewr.addWidget(aperture_label, 0, 1)
+        grid_ewr.addWidget(self.aperture_input, 1, 1)
+        grid_ewr.addWidget(hann_win_label, 2, 1)
+        grid_ewr.addWidget(self.hann_win_input, 3, 1)
+        grid_ewr.addWidget(amp_factor_label, 0, 2)
+        grid_ewr.addWidget(self.amp_factor_input, 1, 2)
+        grid_ewr.addWidget(run_ewr_button, 4, 0, 1, 2)
+        grid_ewr.addWidget(amplify_button, 2, 2)
+        grid_ewr.addWidget(sum_button, 3, 2)
+        grid_ewr.addWidget(diff_button, 3, 3)
+        grid_ewr.addWidget(int_width_label, 0, 3)
+        grid_ewr.addWidget(self.int_width_input, 1, 3)
+        grid_ewr.addWidget(plot_button, 2, 3)
 
         # ----
 
@@ -702,9 +728,7 @@ class TriangulateWidget(QtWidgets.QWidget):
         vbox_panel.addStretch(1)
         vbox_panel.addLayout(grid_cross_corr)
         vbox_panel.addStretch(1)
-        vbox_panel.addLayout(grid_holo)
-        vbox_panel.addStretch(1)
-        vbox_panel.addLayout(grid_plot)
+        vbox_panel.addLayout(grid_ewr)
         vbox_panel.addStretch(1)
         vbox_panel.addLayout(grid_sliders)
 
@@ -747,6 +771,22 @@ class TriangulateWidget(QtWidgets.QWidget):
         self.apply_button.setEnabled(False)
         self.reset_button.setEnabled(False)
 
+    def enable_df_inputs(self):
+        self.df_min_label.setText('df min [nm]')
+        self.df_max_input.setEnabled(True)
+        self.df_step_input.setEnabled(True)
+
+    def disable_df_inputs(self):
+        self.df_min_label.setText('df const [nm]')
+        self.df_max_input.setEnabled(False)
+        self.df_step_input.setEnabled(False)
+
+    def manage_df_inputs(self):
+        if self.det_df_checkbox.isChecked():
+            self.enable_df_inputs()
+        else:
+            self.disable_df_inputs()
+
     def set_image_name(self):
         self.display.image.name = self.name_input.text()
         self.fname_input.setText(self.name_input.text())
@@ -762,7 +802,7 @@ class TriangulateWidget(QtWidgets.QWidget):
             self.fname_input.setText(self.display.image.prev.name)
             self.manual_mode_checkbox.setChecked(False)
             self.disable_manual_panel()
-        self.display.changeImage(toNext=False, dispAmp=is_amp_checked, dispPhs=is_phs_checked,
+        self.display.changeImage(dir_to_img=-1, dispAmp=is_amp_checked, dispPhs=is_phs_checked,
                                  logScale=is_log_scale_checked, dispLabs=is_show_labels_checked, color=is_color_checked)
 
     def go_to_next_image(self):
@@ -776,7 +816,23 @@ class TriangulateWidget(QtWidgets.QWidget):
             self.fname_input.setText(self.display.image.next.name)
             self.manual_mode_checkbox.setChecked(False)
             self.disable_manual_panel()
-        self.display.changeImage(toNext=True, dispAmp=is_amp_checked, dispPhs=is_phs_checked,
+        self.display.changeImage(dir_to_img=1, dispAmp=is_amp_checked, dispPhs=is_phs_checked,
+                                 logScale=is_log_scale_checked, dispLabs=is_show_labels_checked, color=is_color_checked)
+
+    def go_to_last_image(self):
+        is_amp_checked = self.amp_radio_button.isChecked()
+        is_phs_checked = self.phs_radio_button.isChecked()
+        is_log_scale_checked = self.log_scale_checkbox.isChecked()
+        is_show_labels_checked = self.show_labels_checkbox.isChecked()
+        is_color_checked = self.color_radio_button.isChecked()
+        curr_img = self.display.image
+        while curr_img.next is not None:
+            curr_img = curr_img.next
+        self.name_input.setText(curr_img.name)
+        self.fname_input.setText(curr_img.name)
+        self.manual_mode_checkbox.setChecked(False)
+        self.disable_manual_panel()
+        self.display.changeImage(dir_to_img=0, dispAmp=is_amp_checked, dispPhs=is_phs_checked,
                                  logScale=is_log_scale_checked, dispLabs=is_show_labels_checked, color=is_color_checked)
 
     def flip_image_h(self):
@@ -994,8 +1050,7 @@ class TriangulateWidget(QtWidgets.QWidget):
             img_list.insert(n, frag)
 
         img_list.UpdateLinks()
-        for i in range(n_to_zoom):
-            self.go_to_next_image()
+        self.go_to_last_image()
         print('Zooming complete!')
 
     def clear_image(self):
@@ -1100,15 +1155,9 @@ class TriangulateWidget(QtWidgets.QWidget):
         if curr_img.prev is None:
             print('There is no reference image!')
             return
-        img_list_tmp = imsup.CreateImageListFromImage(curr_img.prev, 2)
-        self.get_clicked_coords()
-        df_min = float(self.df_min_input.text())
-        df_max = float(self.df_max_input.text())
-        df_step = float(self.df_step_input.text())
-        img_align_list = cross_corr_images(img_list_tmp, self.btn_grid.n_rows, self.display.frag_coords[1:],
-                                           df_min, df_max, df_step)
-        for img in img_align_list:
-            self.insert_img_after_curr(img)
+        img_list_to_cc = imsup.CreateImageListFromImage(curr_img.prev, 2)
+        self.cross_corr_core(img_list_to_cc)
+        self.go_to_last_image()
 
     def cross_corr_n_images(self):
         n_to_cc = int(self.n_to_cc_input.text())
@@ -1119,14 +1168,23 @@ class TriangulateWidget(QtWidgets.QWidget):
         if (curr_img.numInSeries - 1) + n_to_cc > n_imgs:
             n_to_cc = n_imgs - (curr_img.numInSeries - 1)
         img_list_to_cc = imsup.CreateImageListFromImage(curr_img, n_to_cc)
-        print(type(img_list_to_cc[0]))
-        df_min = float(self.df_min_input.text())
-        df_max = float(self.df_max_input.text())
-        df_step = float(self.df_step_input.text())
-        img_align_list = cross_corr_images(img_list_to_cc, self.btn_grid.n_rows, self.display.frag_coords[1:],
-                                           df_min, df_max, df_step)
+        self.cross_corr_core(img_list_to_cc)
+        self.go_to_last_image()
+
+    def cross_corr_core(self, img_list_to_cc):
+        self.get_clicked_coords()
+        if self.det_df_checkbox.isChecked():
+            df_min = float(self.df_min_input.text())
+            df_max = float(self.df_max_input.text())
+            df_step = float(self.df_step_input.text())
+            img_align_list = cross_corr_images(img_list_to_cc, self.btn_grid.n_rows, self.display.frag_coords[1:],
+                                               df_min=df_min, df_max=df_max, df_step=df_step)
+        else:
+            df_const = float(self.df_min_input.text())
+            img_align_list = cross_corr_images(img_list_to_cc, self.btn_grid.n_rows, self.display.frag_coords[1:],
+                                               df_min=df_const)
         for img in img_align_list:
-            self.insert_img_after_curr(img)
+            self.insert_img_last(img)
 
     def align_shift(self):
         curr_img = self.display.image
@@ -1231,6 +1289,12 @@ class TriangulateWidget(QtWidgets.QWidget):
         tmp_img_list.UpdateLinks()
         self.go_to_next_image()
 
+    def insert_img_last(self, img):
+        tmp_img_list = imsup.CreateImageListFromFirstImage(self.display.image)
+        tmp_img_list.append(img)
+        self.display.pointSets.append([])
+        tmp_img_list.UpdateLinks()
+
     def calc_phs_sum(self):
         rec_holo1 = self.display.image.prev
         rec_holo2 = self.display.image
@@ -1310,6 +1374,27 @@ class TriangulateWidget(QtWidgets.QWidget):
         self.display.frag_coords = frag_coords
         self.display.repaint()
 
+    def run_ewr(self):
+        n_to_ewr = int(self.n_to_ewr_input.text())
+        n_iters = int(self.n_iters_input.text())
+        curr_img = self.display.image
+        first_img = imsup.GetFirstImage(curr_img)
+        all_img_list = imsup.CreateImageListFromFirstImage(first_img)
+        n_imgs = len(all_img_list)
+
+        idx_in_focus = int(self.in_focus_input.text()) - 1
+        cc.DetermineAbsoluteDefocus(all_img_list, idx_in_focus)
+
+        if (curr_img.numInSeries - 1) + n_to_ewr > n_imgs:
+            n_to_ewr = n_imgs - (curr_img.numInSeries - 1)
+        img_list_to_ewr = imsup.CreateImageListFromImage(curr_img, n_to_ewr)
+
+        exit_wave = prop.run_iwfr(img_list_to_ewr, n_iters)
+        exit_wave.ReIm2AmPh()
+        exit_wave.MoveToCPU()
+        self.insert_img_last(exit_wave)
+        self.go_to_last_image()
+
     def plot_profile(self):
         curr_img = self.display.image
         curr_idx = curr_img.numInSeries - 1
@@ -1371,36 +1456,6 @@ class TriangulateWidget(QtWidgets.QWidget):
 
         self.plot_widget.plot(dists, int_profile, 'Distance [nm]', 'Intensity [a.u.]')
 
-    # def plot_profile(self):
-    #     curr_img = self.display.image
-    #     curr_idx = curr_img.numInSeries - 1
-    #     px_sz = curr_img.px_dim
-    #     p1, p2 = self.display.pointSets[curr_idx][:2]
-    #     p1 = CalcRealCoords(curr_img.width, p1)
-    #     p2 = CalcRealCoords(curr_img.width, p2)
-    #
-    #     x1, x2 = min(p1[0], p2[0]), max(p1[0], p2[0])
-    #     y1, y2 = min(p1[1], p2[1]), max(p1[1], p2[1])
-    #     x_dist = x2 - x1
-    #     y_dist = y2 - y1
-    #
-    #     if x_dist > y_dist:
-    #         x_range = list(range(x1, x2))
-    #         a_coeff = (p2[1] - p1[1]) / (p2[0] - p1[0])
-    #         b_coeff = p1[1] - a_coeff * p1[0]
-    #         y_range = [ int(a_coeff * x + b_coeff) for x in x_range ]
-    #     else:
-    #         y_range = list(range(y1, y2))
-    #         a_coeff = (p2[0] - p1[0]) / (p2[1] - p1[1])
-    #         b_coeff = p1[0] - a_coeff * p1[1]
-    #         x_range = [ int(a_coeff * y + b_coeff) for y in y_range ]
-    #
-    #     print(len(x_range), len(y_range))
-    #     profile = curr_img.amPh.am[x_range, y_range]
-    #     dists = np.arange(0, profile.shape[0], 1) * px_sz
-    #     dists *= 1e9
-    #     self.plot_widget.plot(dists, profile, 'Distance [nm]', 'Intensity [a.u.]')
-
 # --------------------------------------------------------
 
 def LoadImageSeriesFromFirstFile(imgPath):
@@ -1438,9 +1493,12 @@ def LoadImageSeriesFromFirstFile(imgPath):
 
 # --------------------------------------------------------
 
-def cross_corr_images(img_list, n_div, frag_coords, df_min=0.0, df_max=10.0, df_step=1.0):
+def cross_corr_images(img_list, n_div, frag_coords, df_min=0.0, df_max=-1.0, df_step=1.0):
     img_align_list = imsup.ImageList()
     img_list[0].shift = [0, 0]
+    if df_max < 0.0:
+        df_max = df_min + 1.0
+        df_step = 2.0
     for img in img_list[1:]:
         mcf_best = cc.MaximizeMCFCore(img.prev, img, n_div, frag_coords,
                                       df_min, df_max, df_step, use_other_aberrs=False)

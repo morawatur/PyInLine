@@ -206,75 +206,52 @@ def PropagateBackToDefocus(img, defocus, use_other_aberrs=True, hann_width=const
 
 # -------------------------------------------------------------------
 
-def PerformIWFR(images, N):
-    imgHeight, imgWidth = images[0].height, images[0].width
-    ewfResultsDir = 'results/ewf/'
-    ewfAmName = 'am'
-    ewfPhName = 'ph'
-    # backCTFunctions = []
-    # forwCTFunctions = []
+def run_iteration_of_iwfr(imgs_to_ewr):
+    n_imgs = len(imgs_to_ewr)
+    img_w, img_h = imgs_to_ewr[0].width, imgs_to_ewr[0].height
+    exit_wave = imsup.ImageExp(img_h, img_w, imsup.Image.cmp['CRI'], imsup.Image.mem['GPU'])
+
+    for img, idx in zip(imgs_to_ewr, range(0, n_imgs)):
+        img.MoveToGPU()
+        img = PropagateToFocus(img, use_other_aberrs=False)
+        img.AmPh2ReIm()
+        exit_wave.reIm = arrsup.AddArrayToArray(exit_wave.reIm, img.reIm)
+        # exit_wave.reIm = arrsup.AddTwoArrays(exit_wave.reIm, img.reIm)
+
+    exit_wave.reIm = arrsup.MultArrayByScalar(exit_wave.reIm, 1 / n_imgs)
+
+    for img, idx in zip(imgs_to_ewr, range(0, n_imgs)):
+        imgs_to_ewr[idx] = PropagateBackToDefocus(exit_wave, img.defocus, use_other_aberrs=False)
+        print(imgs_to_ewr[idx].memType, img.memType)
+        img.MoveToCPU()
+        print(imgs_to_ewr[idx].memType, img.memType)
+        imgs_to_ewr[idx].amPh.am = np.copy(img.amPh.am)  # restore original amplitude
+
+    return imgs_to_ewr, exit_wave
+
+# -------------------------------------------------------------------
+
+def run_iwfr(imgs_to_iwfr, n_iters):
+    ewf_dir = 'results/ewf/'
+    amp_name = 'amp'
+    phs_name = 'phs'
+    amp_path_base = '{0}{1}_00.png'.format(ewf_dir, amp_name)
+    phs_path_base = '{0}{1}_00.png'.format(ewf_dir, phs_name)
 
     print('Starting IWFR...')
+    exit_wave = imsup.copy_am_ph_image(imgs_to_iwfr[0])
 
-    # storing contrast transfer functions
-
-    # for img in images:
-    #     # print(imgWidth, img.px_dim, -img.defocus)
-    #     ctf = CalcTransferFunction(imgWidth, img.px_dim, -img.defocus)
-    #     ctf.AmPh2ReIm()
-    #     # ctf.reIm = ccc.Diff2FFT(ctf.reIm)
-    #     backCTFunctions.append(ctf)
-    #
-    #     ctf = CalcTransferFunction(imgWidth, img.px_dim, img.defocus)
-    #     ctf.AmPh2ReIm()
-    #     # ctf.reIm = ccc.Diff2FFT(ctf.reIm)
-    #     forwCTFunctions.append(ctf)
-
-    # start IWFR procedure
-
-    exitWave = imsup.Image(imgHeight, imgWidth, imsup.Image.cmp['CRI'], imsup.Image.mem['GPU'])
-
-    for i in range(0, N):
+    for i in range(0, n_iters):
         print('Iteration no {0}...'.format(i+1))
-        imsup.ClearImageData(exitWave)
-
-        # backpropagation (to in-focus plane)
+        imgs_to_iwfr, exit_wave = run_iteration_of_iwfr(imgs_to_iwfr)
+        ewf_amp_path = amp_path_base.replace('00', '0{0}'.format(i+1) if i < 10 else '{0}'.format(i+1))
+        ewf_phs_path = phs_path_base.replace('00', '0{0}'.format(i+1) if i < 10 else '{0}'.format(i+1))
+        imsup.SaveAmpImage(exit_wave, ewf_amp_path)
+        imsup.SavePhaseImage(exit_wave, ewf_phs_path)
         ccfg.GetGPUMemoryUsed()
-
-        for img, idx in zip(images, range(0, len(images))):
-            img.MoveToGPU()
-            # img = PropagateWave(img, backCTFunctions[idx])        # faster, but uses more memory
-            img = PropagateToFocus(img, use_other_aberrs=True)      # slower, but uses less memory
-            img.AmPh2ReIm()
-            exitWave.reIm = arrsup.AddArrayToArray(exitWave.reIm, img.reIm)
-            img.MoveToCPU()
-
-        exitWave.reIm = arrsup.MultArrayByScalar(exitWave.reIm, 1/len(images))
-
-        exitWave.MoveToCPU()
-        ewfAmPath = ewfResultsDir + ewfAmName + str(i+1) + '.png'
-        ewfPhPath = ewfAmPath.replace(ewfAmName, ewfPhName)
-        # ewfAmplPhPath = ewfPhPath.replace(ewfPhName, ewfPhName + 'Ampl')
-
-        imsup.SaveAmpImage(exitWave, ewfAmPath)
-        imsup.SavePhaseImage(exitWave, ewfPhPath)
-        # amplifExitPhase = FilterPhase(exitWave)
-        # imsup.SavePhaseImage(amplifExitPhase, ewfAmplPhPath)
-        # amplifExitPhase.ClearGPUMemory()
-        exitWave.MoveToGPU()
-
-        # forward propagation (to the original focus plane)
-        ccfg.GetGPUMemoryUsed()
-
-        for img, idx in zip(images, range(0, len(images))):
-            img.MoveToGPU()
-            # images[idx] = PropagateWave(exitWave, forwCTFunctions[idx])
-            images[idx] = PropagateBackToDefocus(exitWave, img.defocus, use_other_aberrs=True)
-            img.MoveToCPU()
-            images[idx].amPh.am = np.copy(img.amPh.am)          # restore original amplitude
 
     print('All done')
-    return exitWave
+    return exit_wave
 
 # -------------------------------------------------------------------
 
