@@ -646,17 +646,19 @@ class TriangulateWidget(QtWidgets.QWidget):
         grid_ewr.addWidget(self.n_to_ewr_input, 3, 0)
         grid_ewr.addWidget(aperture_label, 0, 1)
         grid_ewr.addWidget(self.aperture_input, 1, 1)
-        grid_ewr.addWidget(hann_win_label, 2, 1)
-        grid_ewr.addWidget(self.hann_win_input, 3, 1)
-        grid_ewr.addWidget(amp_factor_label, 0, 2)
-        grid_ewr.addWidget(self.amp_factor_input, 1, 2)
+        grid_ewr.addWidget(hann_win_label, 0, 2)
+        grid_ewr.addWidget(self.hann_win_input, 1, 2)
+        grid_ewr.addWidget(amp_factor_label, 0, 3)
+        grid_ewr.addWidget(self.amp_factor_input, 1, 3)
+        grid_ewr.addWidget(n_iters_label, 2, 1)
+        grid_ewr.addWidget(self.n_iters_input, 3, 1)
         grid_ewr.addWidget(run_ewr_button, 4, 0, 1, 2)
-        grid_ewr.addWidget(amplify_button, 2, 2)
-        grid_ewr.addWidget(sum_button, 3, 2)
-        grid_ewr.addWidget(diff_button, 3, 3)
-        grid_ewr.addWidget(int_width_label, 0, 3)
-        grid_ewr.addWidget(self.int_width_input, 1, 3)
-        grid_ewr.addWidget(plot_button, 2, 3)
+        grid_ewr.addWidget(amplify_button, 2, 3)
+        grid_ewr.addWidget(sum_button, 2, 2)
+        grid_ewr.addWidget(diff_button, 3, 2)
+        grid_ewr.addWidget(int_width_label, 3, 3)
+        grid_ewr.addWidget(self.int_width_input, 4, 3)
+        grid_ewr.addWidget(plot_button, 4, 2)
 
         # ----
 
@@ -1168,8 +1170,11 @@ class TriangulateWidget(QtWidgets.QWidget):
         if (curr_img.numInSeries - 1) + n_to_cc > n_imgs:
             n_to_cc = n_imgs - (curr_img.numInSeries - 1)
         img_list_to_cc = imsup.CreateImageListFromImage(curr_img, n_to_cc)
+        print('wat1')
         self.cross_corr_core(img_list_to_cc)
+        print('wat2')
         self.go_to_last_image()
+        print('wat3')
 
     def cross_corr_core(self, img_list_to_cc):
         self.get_clicked_coords()
@@ -1291,9 +1296,15 @@ class TriangulateWidget(QtWidgets.QWidget):
 
     def insert_img_last(self, img):
         tmp_img_list = imsup.CreateImageListFromFirstImage(self.display.image)
+        print('wat1')
         tmp_img_list.append(img)
-        self.display.pointSets.append([])
+        print('wat2')
+        # print(len(self.display.pointSets))
+        # lf.display.pointSets.append([])
+        # print(len(self.display.pointSets))
+        print('wat3')
         tmp_img_list.UpdateLinks()
+        print('wat4')
 
     def calc_phs_sum(self):
         rec_holo1 = self.display.image.prev
