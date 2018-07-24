@@ -111,7 +111,9 @@ class LabelExt(QtWidgets.QLabel):
         super(LabelExt, self).__init__(parent)
         self.image = image
         self.setImage()
-        self.pointSets = [[]]
+        self.n_imgs = len(imsup.CreateImageListFromFirstImage(self.image))
+        self.pointSets = [[]] * self.n_imgs
+        # self.pointSets = [[]]
         self.frag_coords = [0]
         self.show_lines = True
         self.show_labs = True
@@ -240,6 +242,9 @@ class LabelExt(QtWidgets.QLabel):
         newImage.ReIm2AmPh()
         self.image = newImage
 
+        # first_img = imsup.GetFirstImage(self.image)                 # !!!
+        # all_imgs = imsup.CreateImageListFromFirstImage(first_img)   # !!!
+        # print(len(all_imgs) - len(self.pointSets))
         if len(self.pointSets) < self.image.numInSeries:
             self.pointSets.append([])
         self.setImage(dispAmp, dispPhs, logScale, color)
@@ -514,7 +519,8 @@ class TriangulateWidget(QtWidgets.QWidget):
 
         self.btn_grid = ButtonGrid(1, fun=self.get_clicked_coords)
 
-        self.n_to_cc_input = QtWidgets.QLineEdit('1', self)
+        # n_imgs = len(imsup.CreateImageListFromFirstImage(self.display.image))
+        self.n_to_cc_input = QtWidgets.QLineEdit(str(self.display.n_imgs), self)
         cross_corr_w_prev_button = QtWidgets.QPushButton('Cross-corr. with prev.', self)
         cross_corr_n_images_button = QtWidgets.QPushButton('Cross-corr. N images', self)
         shift_button = QtWidgets.QPushButton('Shift', self)
@@ -1050,6 +1056,7 @@ class TriangulateWidget(QtWidgets.QWidget):
         for img, n in zip(img_list2, range(n_to_zoom, 2*n_to_zoom)):
             frag = zoom_fragment(img, real_sq_coords)
             img_list.insert(n, frag)
+            self.display.pointSets.insert(n, [])
 
         img_list.UpdateLinks()
         self.go_to_last_image()
@@ -1158,8 +1165,9 @@ class TriangulateWidget(QtWidgets.QWidget):
             print('There is no reference image!')
             return
         img_list_to_cc = imsup.CreateImageListFromImage(curr_img.prev, 2)
-        self.cross_corr_core(img_list_to_cc)
-        self.go_to_last_image()
+        img_aligned = self.cross_corr_core(img_list_to_cc)[0]
+        self.insert_img_after_curr(img_aligned)
+        self.go_to_next_image()
 
     def cross_corr_n_images(self):
         n_to_cc = int(self.n_to_cc_input.text())
@@ -1167,14 +1175,20 @@ class TriangulateWidget(QtWidgets.QWidget):
         first_img = imsup.GetFirstImage(curr_img)
         all_img_list = imsup.CreateImageListFromFirstImage(first_img)
         n_imgs = len(all_img_list)
+        # n_point_sets = len(self.display.pointSets)
+        # n_diff = n_imgs - n_point_sets
+        # self.display.pointSets.append([] * n_diff)
         if (curr_img.numInSeries - 1) + n_to_cc > n_imgs:
             n_to_cc = n_imgs - (curr_img.numInSeries - 1)
         img_list_to_cc = imsup.CreateImageListFromImage(curr_img, n_to_cc)
-        print('wat1')
-        self.cross_corr_core(img_list_to_cc)
-        print('wat2')
+        img_align_list = self.cross_corr_core(img_list_to_cc)
+
+        ref_img = imsup.copy_am_ph_image(curr_img)
+        self.insert_img_last(ref_img)
+        for img in img_align_list:
+            self.insert_img_last(img)
         self.go_to_last_image()
-        print('wat3')
+        print('Cross-correlation done!')
 
     def cross_corr_core(self, img_list_to_cc):
         self.get_clicked_coords()
@@ -1188,8 +1202,7 @@ class TriangulateWidget(QtWidgets.QWidget):
             df_const = float(self.df_min_input.text())
             img_align_list = cross_corr_images(img_list_to_cc, self.btn_grid.n_rows, self.display.frag_coords[1:],
                                                df_min=df_const)
-        for img in img_align_list:
-            self.insert_img_last(img)
+        return img_align_list
 
     def align_shift(self):
         curr_img = self.display.image
@@ -1295,16 +1308,11 @@ class TriangulateWidget(QtWidgets.QWidget):
         self.go_to_next_image()
 
     def insert_img_last(self, img):
+        img.next = None
         tmp_img_list = imsup.CreateImageListFromFirstImage(self.display.image)
-        print('wat1')
         tmp_img_list.append(img)
-        print('wat2')
-        # print(len(self.display.pointSets))
-        # lf.display.pointSets.append([])
-        # print(len(self.display.pointSets))
-        print('wat3')
+        self.display.pointSets.append([])
         tmp_img_list.UpdateLinks()
-        print('wat4')
 
     def calc_phs_sum(self):
         rec_holo1 = self.display.image.prev
@@ -1395,12 +1403,18 @@ class TriangulateWidget(QtWidgets.QWidget):
 
         idx_in_focus = int(self.in_focus_input.text()) - 1
         cc.DetermineAbsoluteDefocus(all_img_list, idx_in_focus)
+        for img in all_img_list:
+            print("{0:.2f} nm".format(img.defocus * 1e9))
 
         if (curr_img.numInSeries - 1) + n_to_ewr > n_imgs:
             n_to_ewr = n_imgs - (curr_img.numInSeries - 1)
+
+        print(n_to_ewr)
         img_list_to_ewr = imsup.CreateImageListFromImage(curr_img, n_to_ewr)
 
+        print('ble1')
         exit_wave = prop.run_iwfr(img_list_to_ewr, n_iters)
+        print('ble2')
         exit_wave.ReIm2AmPh()
         exit_wave.MoveToCPU()
         self.insert_img_last(exit_wave)
@@ -1517,8 +1531,9 @@ def cross_corr_images(img_list, n_div, frag_coords, df_min=0.0, df_max=-1.0, df_
         img.shift = [ sp + sn for sp, sn in zip(img.prev.shift, new_shift) ]
         # img.shift = list(np.array(img.shift) + np.array(new_shift))
         img_shifted = cc.shift_am_ph_image(img, img.shift)
-        img.defocus = mcf_best.defocus
+        # img.defocus = mcf_best.defocus
         img_shifted.defocus = mcf_best.defocus
+        print(img_shifted.defocus)
         img_align_list.append(img_shifted)
     return img_align_list
 
@@ -1534,6 +1549,7 @@ def zoom_fragment(img, coords):
     zoom_factor = orig_width / crop_width
     zoom_img = tr.RescaleImageSki(crop_img, zoom_factor)
     zoom_img.px_dim *= zoom_factor
+    zoom_img.defocus = img.defocus
     # self.insert_img_after_curr(zoom_img)
     return zoom_img
 
