@@ -153,8 +153,10 @@ def PropagateWave(img, ctf):
     ctf.ReIm2AmPh()
     ctf.MoveToCPU()
     ctf = cc.fft2diff_cpu(ctf)
+    # imsup.DisplayAmpImage(ctf)
+    # imsup.DisplayPhaseImage(ctf)
     ctf.MoveToGPU()
-    # ctf.ReIm2AmPh()
+    ctf.ReIm2AmPh()
 
     fftProp = imsup.Image(img.height, img.width, imsup.Image.cmp['CAP'], imsup.Image.mem['GPU'])
     fftProp.amPh = imsup.MultAmPhMatrices(fft.amPh, ctf.amPh)
@@ -206,14 +208,14 @@ def PropagateBackToDefocus(img, defocus, use_other_aberrs=True, hann_width=const
 
 # -------------------------------------------------------------------
 
-def run_iteration_of_iwfr(imgs_to_ewr):
+def run_iteration_of_iwfr(imgs_to_ewr, use_aberrs=False):
     n_imgs = len(imgs_to_ewr)
     img_w, img_h = imgs_to_ewr[0].width, imgs_to_ewr[0].height
     exit_wave = imsup.ImageExp(img_h, img_w, imsup.Image.cmp['CRI'], imsup.Image.mem['GPU'])
 
     for img, idx in zip(imgs_to_ewr, range(0, n_imgs)):
         img.MoveToGPU()
-        img = PropagateToFocus(img, use_other_aberrs=False)
+        img = PropagateToFocus(img, use_other_aberrs=use_aberrs)
         img.AmPh2ReIm()
         exit_wave.reIm = arrsup.AddArrayToArray(exit_wave.reIm, img.reIm)
         # exit_wave.reIm = arrsup.AddTwoArrays(exit_wave.reIm, img.reIm)
@@ -221,10 +223,10 @@ def run_iteration_of_iwfr(imgs_to_ewr):
     exit_wave.reIm = arrsup.MultArrayByScalar(exit_wave.reIm, 1 / n_imgs)
 
     for img, idx in zip(imgs_to_ewr, range(0, n_imgs)):
-        imgs_to_ewr[idx] = PropagateBackToDefocus(exit_wave, img.defocus, use_other_aberrs=False)
-        print(imgs_to_ewr[idx].memType, img.memType)
+        imgs_to_ewr[idx] = PropagateBackToDefocus(exit_wave, img.defocus, use_other_aberrs=use_aberrs)
+        # print(imgs_to_ewr[idx].memType, img.memType)
         img.MoveToCPU()
-        print(imgs_to_ewr[idx].memType, img.memType)
+        # print(imgs_to_ewr[idx].memType, img.memType)
         imgs_to_ewr[idx].amPh.am = np.copy(img.amPh.am)  # restore original amplitude
 
     return imgs_to_ewr, exit_wave

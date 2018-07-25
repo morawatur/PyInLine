@@ -7,6 +7,7 @@ import numpy as np
 from PyQt5 import QtGui, QtCore, QtWidgets
 import Dm3Reader3 as dm3
 import Constants as const
+import CudaConfig as ccfg
 import ImageSupport as imsup
 import CrossCorr as cc
 import Transform as tr
@@ -381,7 +382,7 @@ class TriangulateWidget(QtWidgets.QWidget):
         self.name_input = QtWidgets.QLineEdit('ref', self)
 
         zoom_button = QtWidgets.QPushButton('Zoom N images', self)
-        self.n_to_zoom_input = QtWidgets.QLineEdit('1', self)
+        self.n_to_zoom_input = QtWidgets.QLineEdit(str(self.display.n_imgs), self)
 
         hbox_name = QtWidgets.QHBoxLayout()
         hbox_name.addWidget(name_it_button)
@@ -561,13 +562,16 @@ class TriangulateWidget(QtWidgets.QWidget):
         self.in_focus_input = QtWidgets.QLineEdit('1', self)
 
         n_to_ewr_label = QtWidgets.QLabel('Num. of images to use', self)
-        self.n_to_ewr_input = QtWidgets.QLineEdit('1', self)
+        self.n_to_ewr_input = QtWidgets.QLineEdit(str(self.display.n_imgs), self)
 
         n_iters_label = QtWidgets.QLabel('Num. of iterations', self)
         self.n_iters_input = QtWidgets.QLineEdit('10', self)
 
         run_ewr_button = QtWidgets.QPushButton('Run reconstruction', self)
         run_ewr_button.clicked.connect(self.run_ewr)
+
+        self.use_aberrs_checkbox = QtWidgets.QCheckBox('Use aberrations', self)
+        self.use_aberrs_checkbox.setChecked(False)
 
         aperture_label = QtWidgets.QLabel('Aperture [px]', self)
         self.aperture_input = QtWidgets.QLineEdit(str(const.aperture), self)
@@ -658,7 +662,8 @@ class TriangulateWidget(QtWidgets.QWidget):
         grid_ewr.addWidget(self.amp_factor_input, 1, 3)
         grid_ewr.addWidget(n_iters_label, 2, 1)
         grid_ewr.addWidget(self.n_iters_input, 3, 1)
-        grid_ewr.addWidget(run_ewr_button, 4, 0, 1, 2)
+        grid_ewr.addWidget(self.use_aberrs_checkbox, 4, 0)
+        grid_ewr.addWidget(run_ewr_button, 4, 1)
         grid_ewr.addWidget(amplify_button, 2, 3)
         grid_ewr.addWidget(sum_button, 2, 2)
         grid_ewr.addWidget(diff_button, 3, 2)
@@ -1409,16 +1414,30 @@ class TriangulateWidget(QtWidgets.QWidget):
         if (curr_img.numInSeries - 1) + n_to_ewr > n_imgs:
             n_to_ewr = n_imgs - (curr_img.numInSeries - 1)
 
-        print(n_to_ewr)
-        img_list_to_ewr = imsup.CreateImageListFromImage(curr_img, n_to_ewr)
+        imgs_to_iwfr = imsup.CreateImageListFromImage(curr_img, n_to_ewr)
+        # exit_wave = prop.run_iwfr(imgs_to_iwfr, n_iters)
 
-        print('ble1')
-        exit_wave = prop.run_iwfr(img_list_to_ewr, n_iters)
-        print('ble2')
-        exit_wave.ReIm2AmPh()
-        exit_wave.MoveToCPU()
-        self.insert_img_last(exit_wave)
-        self.go_to_last_image()
+        print('Starting IWFR...')
+
+        for i in range(0, n_iters):
+            print('Iteration no {0}...'.format(i + 1))
+            imgs_to_iwfr, exit_wave = prop.run_iteration_of_iwfr(imgs_to_iwfr, self.use_aberrs_checkbox.isChecked())
+            ccfg.GetGPUMemoryUsed()
+            exit_wave.ReIm2AmPh()
+            exit_wave.MoveToCPU()
+            exit_wave.name = 'ewf_0{0}.png'.format(i+1) if i < 10 else 'ewf_{0}.png'.format(i+1)
+            self.insert_img_last(exit_wave)
+            self.go_to_last_image()
+            if i < n_iters - 1:
+                exit_wave.MoveToGPU()
+                exit_wave.AmPh2ReIm()
+
+        print('All done')
+
+        # exit_wave.ReIm2AmPh()
+        # exit_wave.MoveToCPU()
+        # self.insert_img_last(exit_wave)
+        # self.go_to_last_image()
 
     def plot_profile(self):
         curr_img = self.display.image
@@ -1533,7 +1552,6 @@ def cross_corr_images(img_list, n_div, frag_coords, df_min=0.0, df_max=-1.0, df_
         img_shifted = cc.shift_am_ph_image(img, img.shift)
         # img.defocus = mcf_best.defocus
         img_shifted.defocus = mcf_best.defocus
-        print(img_shifted.defocus)
         img_align_list.append(img_shifted)
     return img_align_list
 

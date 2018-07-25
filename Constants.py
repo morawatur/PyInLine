@@ -20,6 +20,9 @@ focName = 'foc'
 cropName = 'crop'
 ccfMaxName = 'ccfmax'
 
+# aperture = 0
+# hann_win = 0
+
 aperture = 400
 hann_win = 850
 
