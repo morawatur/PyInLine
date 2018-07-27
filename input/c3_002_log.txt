@@ -1,0 +1,699 @@
+Reading DM3 File...
+DM version: 3
+File size: 17381675 bytes
+
+----------------------------------------
+Tag Group
+----------------------------------------
+"ApplicationBounds"
+"DocumentObjectList"
+
+----------------------------------------
+Tag Group
+----------------------------------------
+""
+
+----------------------------------------
+Tag Group
+----------------------------------------
+"AnnotationGroupList"
+
+----------------------------------------
+Tag Group
+----------------------------------------
+"AnnotationType"
+"BackgroundColor"
+"BackgroundMode"
+"FillMode"
+"ForegroundColor"
+"HasBackground"
+"ImageDisplayInfo"
+
+----------------------------------------
+Tag Group
+----------------------------------------
+"BrightColor"
+"Brightness"
+"CaptionOn"
+"CaptionSize"
+"CLUT"
+"CLUTName"
+"ComplexMode"
+"ComplexRange"
+"Contrast"
+"ContrastMode"
+"DimensionLabels"
+
+----------------------------------------
+Tag Group
+----------------------------------------
+""
+"DoAutoSurvey"
+"EstimatedMax"
+"EstimatedMaxTrimPercentage"
+"EstimatedMin"
+"EstimatedMinTrimPercentage"
+"Gamma"
+"HighLimit"
+"HiLimitContrastDeltaTriggerPercentage"
+"IsInverted"
+"LowLimit"
+"LowLimitContrastDeltaTriggerPercentage"
+"MainSliceId"
+
+----------------------------------------
+Tag Group
+----------------------------------------
+""
+"MinimumContrast"
+"RangeAdjust"
+"SparseSurvey_GridSize"
+"SparseSurvey_NumberPixels"
+"SparseSurvey_UseNumberPixels"
+"SurveyTechique"
+"ImageDisplayType"
+"ImageSource"
+"IsMoveable"
+"IsResizable"
+"IsSelectable"
+"IsTranslatable"
+"IsVisible"
+"ObjectTags"
+
+----------------------------------------
+Tag Group
+----------------------------------------
+"Rectangle"
+"UniqueID"
+"DocumentTags"
+
+----------------------------------------
+Tag Group
+----------------------------------------
+"HasWindowPosition"
+"Image Behavior"
+
+----------------------------------------
+Tag Group
+----------------------------------------
+"DoIntegralZoom"
+"ImageDisplayBounds"
+"IsZoomedToWindow"
+"UnscaledTransform"
+
+----------------------------------------
+Tag Group
+----------------------------------------
+"Offset"
+"Scale"
+"ViewDisplayID"
+"WindowRect"
+"ZoomAndMoveTransform"
+
+----------------------------------------
+Tag Group
+----------------------------------------
+"Offset"
+"Scale"
+"ImageList"
+
+----------------------------------------
+Tag Group
+----------------------------------------
+""
+
+----------------------------------------
+Tag Group
+----------------------------------------
+"ImageData"
+
+----------------------------------------
+Tag Group
+----------------------------------------
+"Calibrations"
+
+----------------------------------------
+Tag Group
+----------------------------------------
+"Brightness"
+
+----------------------------------------
+Tag Group
+----------------------------------------
+"Origin"
+"Scale"
+"Units"
+"Dimension"
+
+----------------------------------------
+Tag Group
+----------------------------------------
+""
+
+----------------------------------------
+Tag Group
+----------------------------------------
+"Origin"
+"Scale"
+"Units"
+""
+
+----------------------------------------
+Tag Group
+----------------------------------------
+"Origin"
+"Scale"
+"Units"
+"DisplayCalibratedUnits"
+"Data"
+"DataType"
+"Dimensions"
+
+----------------------------------------
+Tag Group
+----------------------------------------
+""
+""
+"PixelDepth"
+"ImageTags"
+
+----------------------------------------
+Tag Group
+----------------------------------------
+"Name"
+"UniqueID"
+
+----------------------------------------
+Tag Group
+----------------------------------------
+""
+""
+""
+""
+""
+
+----------------------------------------
+Tag Group
+----------------------------------------
+"Description"
+"ImageData"
+
+----------------------------------------
+Tag Group
+----------------------------------------
+"Calibrations"
+
+----------------------------------------
+Tag Group
+----------------------------------------
+"Brightness"
+
+----------------------------------------
+Tag Group
+----------------------------------------
+"Origin"
+"Scale"
+"Units"
+"Dimension"
+
+----------------------------------------
+Tag Group
+----------------------------------------
+""
+
+----------------------------------------
+Tag Group
+----------------------------------------
+"Origin"
+"Scale"
+"Units"
+""
+
+----------------------------------------
+Tag Group
+----------------------------------------
+"Origin"
+"Scale"
+"Units"
+"DisplayCalibratedUnits"
+"Data"
+"DataType"
+"Dimensions"
+
+----------------------------------------
+Tag Group
+----------------------------------------
+""
+""
+"PixelDepth"
+"ImageTags"
+
+----------------------------------------
+Tag Group
+----------------------------------------
+"Acquisition"
+
+----------------------------------------
+Tag Group
+----------------------------------------
+"Device"
+
+----------------------------------------
+Tag Group
+----------------------------------------
+"Active Size (pixels)"
+"Camera Number"
+"CCD"
+
+----------------------------------------
+Tag Group
+----------------------------------------
+"Pixel Size (um)"
+"Configuration"
+
+----------------------------------------
+Tag Group
+----------------------------------------
+"Transpose"
+
+----------------------------------------
+Tag Group
+----------------------------------------
+"Diagonal Flip"
+"Horizontal Flip"
+"Vertical Flip"
+"Name"
+"Source"
+"Frame"
+
+----------------------------------------
+Tag Group
+----------------------------------------
+"Area"
+
+----------------------------------------
+Tag Group
+----------------------------------------
+"Transform"
+
+----------------------------------------
+Tag Group
+----------------------------------------
+"Class Name"
+"Transform List"
+
+----------------------------------------
+Tag Group
+----------------------------------------
+""
+
+----------------------------------------
+Tag Group
+----------------------------------------
+"Binning"
+"Class Name"
+"Sub Area Adjust"
+"Transpose"
+
+----------------------------------------
+Tag Group
+----------------------------------------
+"Diagonal Flip"
+"Horizontal Flip"
+"Vertical Flip"
+"CCD"
+
+----------------------------------------
+Tag Group
+----------------------------------------
+"Pixel Size (um)"
+"Intensity"
+
+----------------------------------------
+Tag Group
+----------------------------------------
+"Transform"
+
+----------------------------------------
+Tag Group
+----------------------------------------
+"Class Name"
+"Transform List"
+
+----------------------------------------
+Tag Group
+----------------------------------------
+""
+
+----------------------------------------
+Tag Group
+----------------------------------------
+"Class Name"
+"Offset"
+"Scale"
+""
+
+----------------------------------------
+Tag Group
+----------------------------------------
+"ADC Max"
+"ADC Min"
+"Class Name"
+"Parameters"
+
+----------------------------------------
+Tag Group
+----------------------------------------
+"Acquisition Write Flags"
+"Base Detector"
+
+----------------------------------------
+Tag Group
+----------------------------------------
+"Class Name"
+"Name"
+"Detector"
+
+----------------------------------------
+Tag Group
+----------------------------------------
+"Do Continuous Readout"
+"frame sequence"
+
+----------------------------------------
+Tag Group
+----------------------------------------
+"read section index"
+"sections"
+
+----------------------------------------
+Tag Group
+----------------------------------------
+""
+
+----------------------------------------
+Tag Group
+----------------------------------------
+"frame idle shutter state"
+"num frames"
+"segments"
+
+----------------------------------------
+Tag Group
+----------------------------------------
+""
+
+----------------------------------------
+Tag Group
+----------------------------------------
+"kind"
+"parameters"
+
+----------------------------------------
+Tag Group
+----------------------------------------
+"num blocks"
+"num rows"
+"ser clr"
+"segment flags"
+"shutter state"
+""
+
+----------------------------------------
+Tag Group
+----------------------------------------
+"kind"
+"parameters"
+
+----------------------------------------
+Tag Group
+----------------------------------------
+"num accumulate units"
+"segment flags"
+"shutter state"
+""
+
+----------------------------------------
+Tag Group
+----------------------------------------
+"kind"
+"parameters"
+
+----------------------------------------
+Tag Group
+----------------------------------------
+"num blocks"
+"num rows"
+"output source"
+"read mode"
+"ser clr"
+"segment flags"
+"shutter state"
+""
+
+----------------------------------------
+Tag Group
+----------------------------------------
+"kind"
+"parameters"
+
+----------------------------------------
+Tag Group
+----------------------------------------
+"bias post blank"
+"bias pre blank"
+"bias read"
+"bias skip"
+"output source"
+"par bin"
+"par post blank"
+"par pre blank"
+"par read"
+"read flags"
+"read mode"
+"ser bin"
+"ser post blank"
+"ser pre blank"
+"ser read"
+"ser skip"
+"segment flags"
+"shutter state"
+"sequence idle shutter state"
+"Required Data Characteristics"
+"Environment"
+
+----------------------------------------
+Tag Group
+----------------------------------------
+"Mode Name"
+"High Level"
+
+----------------------------------------
+Tag Group
+----------------------------------------
+"Antiblooming"
+"Binning"
+"CCD Read Area"
+"CCD Read Ports"
+"Choose Number Of Frame Shutters Automatically"
+"Class Name"
+"Continuous Readout"
+"Corrections"
+"Corrections Mask"
+"Exposure (s)"
+"Number Of Frame Shutters"
+"Processing"
+"Quality Level"
+"Read Frame Style"
+"Read Mode"
+"Secondary Shutter Post Exposure Compensation (s)"
+"Secondary Shutter Pre Exposure Compensation (s)"
+"Shutter"
+
+----------------------------------------
+Tag Group
+----------------------------------------
+"Primary Shutter States"
+"Primary Shutter States Mask"
+"Secondary Shutter States"
+"Secondary Shutter States Mask"
+"Shutter Exposure"
+"Shutter Index"
+"Shutter Post Exposure Compensation (s)"
+"Shutter Pre Exposure Compensation (s)"
+"Transform"
+
+----------------------------------------
+Tag Group
+----------------------------------------
+"Diagonal Flip"
+"Horizontal Flip"
+"Vertical Flip"
+"Objects"
+
+----------------------------------------
+Tag Group
+----------------------------------------
+""
+
+----------------------------------------
+Tag Group
+----------------------------------------
+"Class Name"
+"Frame Combine Style"
+"Parameter 1"
+"Parameter Set Name"
+"Parameter Set Tag Path"
+"Version"
+"DataBar"
+
+----------------------------------------
+Tag Group
+----------------------------------------
+"Acquisition Date"
+"Acquisition Time"
+"Device Name"
+"Exposure Number"
+"Exposure Time (s)"
+"System Info"
+"Microscope Info"
+
+----------------------------------------
+Tag Group
+----------------------------------------
+"Actual Magnification"
+"Cs(mm)"
+"Emission Current (A)"
+"Illumination Mode"
+"Imaging Mode"
+"Indicated Magnification"
+"Items"
+
+----------------------------------------
+Tag Group
+----------------------------------------
+""
+
+----------------------------------------
+Tag Group
+----------------------------------------
+"Data Type"
+"Label"
+"Tag path"
+"Value"
+""
+
+----------------------------------------
+Tag Group
+----------------------------------------
+"Data Type"
+"Label"
+"Tag path"
+"Value"
+""
+
+----------------------------------------
+Tag Group
+----------------------------------------
+"Data Type"
+"Label"
+"Tag path"
+"Value"
+"Magnification Interpolated"
+"Microscope"
+"Name"
+"Operation Mode"
+"Operator"
+"Probe Current (nA)"
+"Probe Size (nm)"
+"Specimen"
+"STEM Camera Length"
+"Voltage"
+"Name"
+"UniqueID"
+
+----------------------------------------
+Tag Group
+----------------------------------------
+""
+""
+""
+""
+"ImageSourceList"
+
+----------------------------------------
+Tag Group
+----------------------------------------
+""
+
+----------------------------------------
+Tag Group
+----------------------------------------
+"ClassName"
+"Id"
+
+----------------------------------------
+Tag Group
+----------------------------------------
+""
+"ImageRef"
+"InImageMode"
+"MinVersionList"
+
+----------------------------------------
+Tag Group
+----------------------------------------
+""
+
+----------------------------------------
+Tag Group
+----------------------------------------
+"RequiredVersion"
+"NextDocumentObjectID"
+"Page Behavior"
+
+----------------------------------------
+Tag Group
+----------------------------------------
+"DoIntegralZoom"
+"IsZoomedToWindow"
+"LayedOut"
+"PageTransform"
+
+----------------------------------------
+Tag Group
+----------------------------------------
+"Offset"
+"Scale"
+"RestoreImageDisplayBounds"
+"RestoreImageDisplayID"
+"TargetDisplayID"
+"PageSetup"
+
+----------------------------------------
+Tag Group
+----------------------------------------
+"General"
+"Win32"
+"Win32_DevModeW"
+"Win32_DevNamesW"
+"SentinelList"
+
+----------------------------------------
+Tag Group
+----------------------------------------
+"Thumbnails"
+
+----------------------------------------
+Tag Group
+----------------------------------------
+""
+
+----------------------------------------
+Tag Group
+----------------------------------------
+"ImageIndex"
+"SourceSize_Pixels"
+"WindowPosition"
+
+All done
