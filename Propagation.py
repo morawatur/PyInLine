@@ -178,44 +178,46 @@ def PropagateWave(img, ctf):
 
 # -------------------------------------------------------------------
 
-def PropagateToFocus(img, use_other_aberrs=True, hann_width=const.hann_win):
-
+def PropagateToFocus(img, use_other_aberrs=True, aper=const.aperture, hann_width=const.hann_win):
+    print(aper, hann_width)
     if use_other_aberrs:
         ctf = calc_ctf(img.width, img.px_dim, -img.defocus, Cs=-const.Cs,
                        A1=ab.PolarComplex(const.A1_amp, const.A1_phs), df_spread=const.df_spread,
-                       conv_angle=const.conv_angle, aperture=const.aperture, A1_dir=-1)
+                       conv_angle=const.conv_angle, aperture=aper, A1_dir=-1)
         ctf2 = mult_by_hann_window(ctf, N=hann_width)
         ctf.ClearGPUMemory()
     else:
         ctf2 = calc_ctf(img.width, img.px_dim, -img.defocus, Cs=0, A1=ab.PolarComplex(0, 0),
-                        df_spread=0, conv_angle=0, aperture=0)
+                        df_spread=0, conv_angle=0, aperture=0, A1_dir=-1)
 
     return PropagateWave(img, ctf2)
 
 # -------------------------------------------------------------------
 
-def PropagateBackToDefocus(img, defocus, use_other_aberrs=True, hann_width=const.hann_win):
-
+def PropagateBackToDefocus(img, defocus, use_other_aberrs=True, aper=const.aperture, hann_width=const.hann_win):
+    print(aper, hann_width)
     if use_other_aberrs:
-        ctf = calc_ctf(img.width, img.px_dim, defocus)
+        ctf = calc_ctf(img.width, img.px_dim, defocus, Cs=const.Cs,
+                       A1=ab.PolarComplex(const.A1_amp, const.A1_phs), df_spread=const.df_spread,
+                       conv_angle=const.conv_angle, aperture=aper, A1_dir=1)
         ctf2 = mult_by_hann_window(ctf, N=hann_width)
         ctf.ClearGPUMemory()
     else:
         ctf2 = calc_ctf(img.width, img.px_dim, defocus, Cs=0, A1=ab.PolarComplex(0, 0),
-                       df_spread=0, conv_angle=0, aperture=0)
+                        df_spread=0, conv_angle=0, aperture=0, A1_dir=1)
 
     return PropagateWave(img, ctf2)
 
 # -------------------------------------------------------------------
 
-def run_iteration_of_iwfr(imgs_to_ewr, use_aberrs=False):
+def run_iteration_of_iwfr(imgs_to_ewr, use_aberrs=False, ap=const.aperture, hann=const.hann_win):
     n_imgs = len(imgs_to_ewr)
     img_w, img_h = imgs_to_ewr[0].width, imgs_to_ewr[0].height
     exit_wave = imsup.ImageExp(img_h, img_w, imsup.Image.cmp['CRI'], imsup.Image.mem['GPU'])
 
     for img, idx in zip(imgs_to_ewr, range(0, n_imgs)):
         img.MoveToGPU()
-        img = PropagateToFocus(img, use_other_aberrs=use_aberrs)
+        img = PropagateToFocus(img, use_other_aberrs=use_aberrs, aper=ap, hann_width=hann)
         img.AmPh2ReIm()
         exit_wave.reIm = arrsup.AddArrayToArray(exit_wave.reIm, img.reIm)
         # exit_wave.reIm = arrsup.AddTwoArrays(exit_wave.reIm, img.reIm)
@@ -223,7 +225,7 @@ def run_iteration_of_iwfr(imgs_to_ewr, use_aberrs=False):
     exit_wave.reIm = arrsup.MultArrayByScalar(exit_wave.reIm, 1 / n_imgs)
 
     for img, idx in zip(imgs_to_ewr, range(0, n_imgs)):
-        imgs_to_ewr[idx] = PropagateBackToDefocus(exit_wave, img.defocus, use_other_aberrs=use_aberrs)
+        imgs_to_ewr[idx] = PropagateBackToDefocus(exit_wave, img.defocus, use_other_aberrs=use_aberrs, aper=ap, hann_width=hann)
         # print(imgs_to_ewr[idx].memType, img.memType)
         img.MoveToCPU()
         # print(imgs_to_ewr[idx].memType, img.memType)

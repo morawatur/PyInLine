@@ -851,6 +851,14 @@ def GetFirstImage(img):
 
 #-------------------------------------------------------------------
 
+def GetLastImage(img):
+    last = img
+    while last.next is not None:
+        last = last.next
+    return last
+
+#-------------------------------------------------------------------
+
 def CreateImageListFromFirstImage(img):
     imgList = ImageList()
     imgList.append(img)

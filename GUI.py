@@ -226,29 +226,9 @@ class LabelExt(QtWidgets.QLabel):
         self.setPixmap(pixmap)
         self.repaint()
 
-    def changeImage(self, dir_to_img=1, dispAmp=True, dispPhs=False, logScale=False, dispLabs=True, color=False):
-        if dir_to_img == 1:
-            newImage = self.image.next
-        elif dir_to_img == -1:
-            newImage = self.image.prev
-        else:
-            curr = self.image
-            while curr.next is not None:
-                curr = curr.next
-            newImage = curr
-
-        if newImage is None:
-            return
-
-        newImage.ReIm2AmPh()
-        self.image = newImage
-
-        # first_img = imsup.GetFirstImage(self.image)                 # !!!
-        # all_imgs = imsup.CreateImageListFromFirstImage(first_img)   # !!!
-        # print(len(all_imgs) - len(self.pointSets))
+    def update_labs(self, dispLabs=True):
         if len(self.pointSets) < self.image.numInSeries:
             self.pointSets.append([])
-        self.setImage(dispAmp, dispPhs, logScale, color)
 
         labsToDel = self.children()
         for child in labsToDel:
@@ -256,6 +236,33 @@ class LabelExt(QtWidgets.QLabel):
 
         if dispLabs:
             self.show_labels()
+
+    def change_image(self, new_idx, dispAmp=True, dispPhs=False, logScale=False, dispLabs=True, color=False):
+        curr = self.image
+        first = imsup.GetFirstImage(curr)
+        imgs = imsup.CreateImageListFromFirstImage(first)
+        if 0 > new_idx > len(imgs) - 1:
+            return
+
+        new_img = imgs[new_idx]
+        new_img.ReIm2AmPh()
+        self.image = new_img
+        self.setImage(dispAmp, dispPhs, logScale, color)
+        self.update_labs(dispLabs)
+
+    def change_image_adjacent(self, dir_to_img=1, dispAmp=True, dispPhs=False, logScale=False, dispLabs=True, color=False):
+        if dir_to_img == 1:
+            new_img = self.image.next
+        else:
+            new_img = self.image.prev
+
+        if new_img is None:
+            return
+
+        new_img.ReIm2AmPh()
+        self.image = new_img
+        self.setImage(dispAmp, dispPhs, logScale, color)
+        self.update_labs(dispLabs)
 
     def hide_labels(self):
         labsToDel = self.children()
@@ -573,7 +580,10 @@ class TriangulateWidget(QtWidgets.QWidget):
         self.use_aberrs_checkbox = QtWidgets.QCheckBox('Use aberrations', self)
         self.use_aberrs_checkbox.setChecked(False)
 
-        aperture_label = QtWidgets.QLabel('Aperture [px]', self)
+        self.det_abs_df_checkbox = QtWidgets.QCheckBox('Det. abs. defoc. values', self)
+        self.det_abs_df_checkbox.setChecked(True)
+
+        aperture_label = QtWidgets.QLabel('Aperture radius [px]', self)
         self.aperture_input = QtWidgets.QLineEdit(str(const.aperture), self)
 
         hann_win_label = QtWidgets.QLabel('Hann window [px]', self)
@@ -663,6 +673,7 @@ class TriangulateWidget(QtWidgets.QWidget):
         grid_ewr.addWidget(n_iters_label, 2, 1)
         grid_ewr.addWidget(self.n_iters_input, 3, 1)
         grid_ewr.addWidget(self.use_aberrs_checkbox, 4, 0)
+        grid_ewr.addWidget(self.det_abs_df_checkbox, 5, 0)
         grid_ewr.addWidget(run_ewr_button, 4, 1)
         grid_ewr.addWidget(amplify_button, 2, 3)
         grid_ewr.addWidget(sum_button, 2, 2)
@@ -804,49 +815,39 @@ class TriangulateWidget(QtWidgets.QWidget):
         self.display.image.name = self.name_input.text()
         self.fname_input.setText(self.name_input.text())
 
-    def go_to_prev_image(self):
+    def go_to_image(self, new_idx):
         is_amp_checked = self.amp_radio_button.isChecked()
         is_phs_checked = self.phs_radio_button.isChecked()
         is_log_scale_checked = self.log_scale_checkbox.isChecked()
         is_show_labels_checked = self.show_labels_checkbox.isChecked()
         is_color_checked = self.color_radio_button.isChecked()
-        if self.display.image.prev is not None:
-            self.name_input.setText(self.display.image.prev.name)
-            self.fname_input.setText(self.display.image.prev.name)
-            self.manual_mode_checkbox.setChecked(False)
-            self.disable_manual_panel()
-        self.display.changeImage(dir_to_img=-1, dispAmp=is_amp_checked, dispPhs=is_phs_checked,
-                                 logScale=is_log_scale_checked, dispLabs=is_show_labels_checked, color=is_color_checked)
-
-    def go_to_next_image(self):
-        is_amp_checked = self.amp_radio_button.isChecked()
-        is_phs_checked = self.phs_radio_button.isChecked()
-        is_log_scale_checked = self.log_scale_checkbox.isChecked()
-        is_show_labels_checked = self.show_labels_checkbox.isChecked()
-        is_color_checked = self.color_radio_button.isChecked()
-        if self.display.image.next is not None:
-            self.name_input.setText(self.display.image.next.name)
-            self.fname_input.setText(self.display.image.next.name)
-            self.manual_mode_checkbox.setChecked(False)
-            self.disable_manual_panel()
-        self.display.changeImage(dir_to_img=1, dispAmp=is_amp_checked, dispPhs=is_phs_checked,
-                                 logScale=is_log_scale_checked, dispLabs=is_show_labels_checked, color=is_color_checked)
-
-    def go_to_last_image(self):
-        is_amp_checked = self.amp_radio_button.isChecked()
-        is_phs_checked = self.phs_radio_button.isChecked()
-        is_log_scale_checked = self.log_scale_checkbox.isChecked()
-        is_show_labels_checked = self.show_labels_checkbox.isChecked()
-        is_color_checked = self.color_radio_button.isChecked()
-        curr_img = self.display.image
-        while curr_img.next is not None:
-            curr_img = curr_img.next
+        first_img = imsup.GetFirstImage(self.display.image)
+        imgs = imsup.CreateImageListFromFirstImage(first_img)
+        if new_idx > len(imgs) - 1:
+            new_idx = len(imgs) - 1
+        curr_img = imgs[new_idx]
         self.name_input.setText(curr_img.name)
         self.fname_input.setText(curr_img.name)
         self.manual_mode_checkbox.setChecked(False)
         self.disable_manual_panel()
-        self.display.changeImage(dir_to_img=0, dispAmp=is_amp_checked, dispPhs=is_phs_checked,
-                                 logScale=is_log_scale_checked, dispLabs=is_show_labels_checked, color=is_color_checked)
+        self.display.change_image(new_idx, dispAmp=is_amp_checked, dispPhs=is_phs_checked,
+                                  logScale=is_log_scale_checked, dispLabs=is_show_labels_checked, color=is_color_checked)
+
+    def go_to_prev_image(self):
+        curr_img = self.display.image
+        prev_idx = curr_img.prev.numInSeries - 1
+        self.go_to_image(prev_idx)
+
+    def go_to_next_image(self):
+        curr_img = self.display.image
+        next_idx = curr_img.next.numInSeries - 1
+        self.go_to_image(next_idx)
+
+    def go_to_last_image(self):
+        curr_img = self.display.image
+        last_img = imsup.GetLastImage(curr_img)
+        last_idx = last_img.numInSeries - 1
+        self.go_to_image(last_idx)
 
     def flip_image_h(self):
         imsup.flip_image_h(self.display.image)
@@ -1348,43 +1349,64 @@ class TriangulateWidget(QtWidgets.QWidget):
 
     def swap_left(self):
         curr_img = self.display.image
-        if curr_img.prev is None:
-            return
         curr_idx = curr_img.numInSeries - 1
+        prev_idx = curr_idx - 1
+
+        if curr_img.prev is None:
+            last_img = imsup.GetLastImage(curr_img)
+            prev_idx = last_img.numInSeries - 1
+
+        print(prev_idx, curr_idx)
 
         first_img = imsup.GetFirstImage(curr_img)
         imgs = imsup.CreateImageListFromFirstImage(first_img)
-        imgs[curr_idx-1], imgs[curr_idx] = imgs[curr_idx], imgs[curr_idx-1]
+        imgs[prev_idx], imgs[curr_idx] = imgs[curr_idx], imgs[prev_idx]
 
         imgs[0].prev = None
         imgs[len(imgs)-1].next = None
-        imgs[curr_idx-1].numInSeries = imgs[curr_idx].numInSeries
+
+        left_idx, right_idx = min(prev_idx, curr_idx), max(prev_idx, curr_idx)
+        print(left_idx, right_idx)
+        imgs[left_idx].numInSeries = imgs[right_idx].numInSeries
+        for img in imgs:
+            print(img.numInSeries)
         imgs.UpdateLinks()
+        print('--------------------')
+        for img in imgs:
+             print(img.numInSeries)
 
         ps = self.display.pointSets
-        if len(ps[curr_idx-1]) > 0:
-            ps[curr_idx-1], ps[curr_idx] = ps[curr_idx], ps[curr_idx-1]
-        self.go_to_next_image()
+        if len(ps[prev_idx]) > 0:
+            ps[prev_idx], ps[curr_idx] = ps[curr_idx], ps[prev_idx]
+        # self.go_to_next_image()
+        self.go_to_image(prev_idx)
 
     def swap_right(self):
         curr_img = self.display.image
-        if curr_img.next is None:
-            return
         curr_idx = curr_img.numInSeries - 1
+        next_idx = curr_idx + 1
+
+        if curr_img.next is None:
+            next_idx = 0
+
+        print(curr_idx, next_idx)
 
         first_img = imsup.GetFirstImage(curr_img)
         imgs = imsup.CreateImageListFromFirstImage(first_img)
-        imgs[curr_idx], imgs[curr_idx+1] = imgs[curr_idx+1], imgs[curr_idx]
+        imgs[curr_idx], imgs[next_idx] = imgs[next_idx], imgs[curr_idx]
 
         imgs[0].prev = None
         imgs[len(imgs)-1].next = None
-        imgs[curr_idx].numInSeries = imgs[curr_idx+1].numInSeries
+
+        left_idx, right_idx = min(curr_idx, next_idx), max(curr_idx, next_idx)
+        imgs[left_idx].numInSeries = imgs[right_idx].numInSeries
         imgs.UpdateLinks()
 
         ps = self.display.pointSets
         if len(ps[curr_idx]) > 0:
-            ps[curr_idx], ps[curr_idx+1] = ps[curr_idx+1], ps[curr_idx]
-        self.go_to_prev_image()
+            ps[curr_idx], ps[next_idx] = ps[next_idx], ps[curr_idx]
+        # self.go_to_prev_image()
+        self.go_to_image(next_idx)
 
     def get_clicked_coords(self):
         n_frags = self.btn_grid.count()
@@ -1403,29 +1425,35 @@ class TriangulateWidget(QtWidgets.QWidget):
         n_iters = int(self.n_iters_input.text())
         curr_img = self.display.image
         first_img = imsup.GetFirstImage(curr_img)
-        all_img_list = imsup.CreateImageListFromFirstImage(first_img)
-        n_imgs = len(all_img_list)
+        all_imgs_list = imsup.CreateImageListFromFirstImage(first_img)
 
-        idx_in_focus = int(self.in_focus_input.text()) - 1
-        cc.DetermineAbsoluteDefocus(all_img_list, idx_in_focus)
-        for img in all_img_list:
-            print("{0:.2f} nm".format(img.defocus * 1e9))
-
-        if (curr_img.numInSeries - 1) + n_to_ewr > n_imgs:
-            n_to_ewr = n_imgs - (curr_img.numInSeries - 1)
+        n_all_imgs = len(all_imgs_list)
+        if (curr_img.numInSeries - 1) + n_to_ewr > n_all_imgs:
+            n_to_ewr = n_all_imgs - (curr_img.numInSeries - 1)
 
         imgs_to_iwfr = imsup.CreateImageListFromImage(curr_img, n_to_ewr)
-        # exit_wave = prop.run_iwfr(imgs_to_iwfr, n_iters)
+
+        if self.det_abs_df_checkbox.isChecked():
+            idx_in_focus = int(self.in_focus_input.text()) - 1
+            cc.DetermineAbsoluteDefocus(imgs_to_iwfr, idx_in_focus)
+        # else:
+        #    cc.shift_absolute_defocus(imgs_to_iwfr, idx_in_focus)
+
+        for img in imgs_to_iwfr:
+            print("{0:.2f} nm".format(img.defocus * 1e9))
 
         print('Starting IWFR...')
+        # exit_wave = prop.run_iwfr(imgs_to_iwfr, n_iters)
 
         for i in range(0, n_iters):
             print('Iteration no {0}...'.format(i + 1))
-            imgs_to_iwfr, exit_wave = prop.run_iteration_of_iwfr(imgs_to_iwfr, self.use_aberrs_checkbox.isChecked())
+            imgs_to_iwfr, exit_wave = prop.run_iteration_of_iwfr(imgs_to_iwfr, self.use_aberrs_checkbox.isChecked(),
+                                                                 ap=int(self.aperture_input.text()),
+                                                                 hann=int(self.hann_win_input.text()))
             ccfg.GetGPUMemoryUsed()
             exit_wave.ReIm2AmPh()
             exit_wave.MoveToCPU()
-            exit_wave.name = 'ewf_0{0}.png'.format(i+1) if i < 10 else 'ewf_{0}.png'.format(i+1)
+            exit_wave.name = 'wave_fun_0{0}.png'.format(i+1) if i < 9 else 'ewf_{0}.png'.format(i+1)
             self.insert_img_last(exit_wave)
             self.go_to_last_image()
             if i < n_iters - 1:
