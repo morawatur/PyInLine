@@ -356,6 +356,7 @@ class TriangulateWidget(QtWidgets.QWidget):
             print('No images to read. Exiting...')
             exit()
         image = LoadImageSeriesFromFirstFile(image_path)
+        image.name = 'img01'
         self.display = LabelExt(self, image)
         self.display.setFixedWidth(const.ccWidgetDim)
         self.display.setFixedHeight(const.ccWidgetDim)
@@ -826,6 +827,8 @@ class TriangulateWidget(QtWidgets.QWidget):
         if new_idx > len(imgs) - 1:
             new_idx = len(imgs) - 1
         curr_img = imgs[new_idx]
+        if curr_img.name == '':
+            curr_img.name = 'img0{0}'.format(new_idx + 1) if new_idx < 9 else 'img{0}'.format(new_idx + 1)
         self.name_input.setText(curr_img.name)
         self.fname_input.setText(curr_img.name)
         self.manual_mode_checkbox.setChecked(False)
@@ -835,11 +838,15 @@ class TriangulateWidget(QtWidgets.QWidget):
 
     def go_to_prev_image(self):
         curr_img = self.display.image
+        if curr_img.prev is None:
+            return
         prev_idx = curr_img.prev.numInSeries - 1
         self.go_to_image(prev_idx)
 
     def go_to_next_image(self):
         curr_img = self.display.image
+        if curr_img.next is None:
+            return
         next_idx = curr_img.next.numInSeries - 1
         self.go_to_image(next_idx)
 
@@ -1352,34 +1359,28 @@ class TriangulateWidget(QtWidgets.QWidget):
         curr_idx = curr_img.numInSeries - 1
         prev_idx = curr_idx - 1
 
-        if curr_img.prev is None:
-            last_img = imsup.GetLastImage(curr_img)
-            prev_idx = last_img.numInSeries - 1
-
-        print(prev_idx, curr_idx)
-
         first_img = imsup.GetFirstImage(curr_img)
         imgs = imsup.CreateImageListFromFirstImage(first_img)
-        imgs[prev_idx], imgs[curr_idx] = imgs[curr_idx], imgs[prev_idx]
 
+        if curr_img.prev is None:
+            prev_idx = len(imgs) - 1
+
+        imgs[prev_idx], imgs[curr_idx] = imgs[curr_idx], imgs[prev_idx]
         imgs[0].prev = None
         imgs[len(imgs)-1].next = None
 
         left_idx, right_idx = min(prev_idx, curr_idx), max(prev_idx, curr_idx)
-        print(left_idx, right_idx)
         imgs[left_idx].numInSeries = imgs[right_idx].numInSeries
-        for img in imgs:
-            print(img.numInSeries)
         imgs.UpdateLinks()
-        print('--------------------')
-        for img in imgs:
-             print(img.numInSeries)
 
         ps = self.display.pointSets
         if len(ps[prev_idx]) > 0:
             ps[prev_idx], ps[curr_idx] = ps[curr_idx], ps[prev_idx]
-        # self.go_to_next_image()
-        self.go_to_image(prev_idx)
+
+        if prev_idx != len(imgs) - 1:
+            self.go_to_next_image()
+        else:
+            self.go_to_image(curr_idx)
 
     def swap_right(self):
         curr_img = self.display.image
@@ -1388,8 +1389,6 @@ class TriangulateWidget(QtWidgets.QWidget):
 
         if curr_img.next is None:
             next_idx = 0
-
-        print(curr_idx, next_idx)
 
         first_img = imsup.GetFirstImage(curr_img)
         imgs = imsup.CreateImageListFromFirstImage(first_img)
@@ -1405,8 +1404,11 @@ class TriangulateWidget(QtWidgets.QWidget):
         ps = self.display.pointSets
         if len(ps[curr_idx]) > 0:
             ps[curr_idx], ps[next_idx] = ps[next_idx], ps[curr_idx]
-        # self.go_to_prev_image()
-        self.go_to_image(next_idx)
+
+        if next_idx != 0:
+            self.go_to_prev_image()
+        else:
+            self.go_to_image(curr_idx)
 
     def get_clicked_coords(self):
         n_frags = self.btn_grid.count()
