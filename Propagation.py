@@ -179,7 +179,6 @@ def PropagateWave(img, ctf):
 # -------------------------------------------------------------------
 
 def PropagateToFocus(img, use_other_aberrs=True, aper=const.aperture, hann_width=const.hann_win):
-    print(aper, hann_width)
     if use_other_aberrs:
         ctf = calc_ctf(img.width, img.px_dim, -img.defocus, Cs=-const.Cs,
                        A1=ab.PolarComplex(const.A1_amp, const.A1_phs), df_spread=const.df_spread,
@@ -195,7 +194,6 @@ def PropagateToFocus(img, use_other_aberrs=True, aper=const.aperture, hann_width
 # -------------------------------------------------------------------
 
 def PropagateBackToDefocus(img, defocus, use_other_aberrs=True, aper=const.aperture, hann_width=const.hann_win):
-    print(aper, hann_width)
     if use_other_aberrs:
         ctf = calc_ctf(img.width, img.px_dim, defocus, Cs=const.Cs,
                        A1=ab.PolarComplex(const.A1_amp, const.A1_phs), df_spread=const.df_spread,

@@ -387,7 +387,7 @@ class TriangulateWidget(QtWidgets.QWidget):
         flip_button = QtWidgets.QPushButton('Flip', self)
 
         name_it_button = QtWidgets.QPushButton('Name it!', self)
-        self.name_input = QtWidgets.QLineEdit('ref', self)
+        self.name_input = QtWidgets.QLineEdit('img01', self)
 
         zoom_button = QtWidgets.QPushButton('Zoom N images', self)
         self.n_to_zoom_input = QtWidgets.QLineEdit(str(self.display.n_imgs), self)
@@ -400,10 +400,10 @@ class TriangulateWidget(QtWidgets.QWidget):
         hbox_zoom.addWidget(zoom_button)
         hbox_zoom.addWidget(self.n_to_zoom_input)
 
-        name_it_button.setFixedWidth(115)
-        zoom_button.setFixedWidth(115)
-        self.name_input.setFixedWidth(115)
-        self.n_to_zoom_input.setFixedWidth(115)
+        name_it_button.setFixedWidth(130)
+        zoom_button.setFixedWidth(130)
+        self.name_input.setFixedWidth(130)
+        self.n_to_zoom_input.setFixedWidth(130)
 
         flip_button.clicked.connect(self.flip_image_h)
         name_it_button.clicked.connect(self.set_image_name)
@@ -414,6 +414,14 @@ class TriangulateWidget(QtWidgets.QWidget):
         delete_button = QtWidgets.QPushButton('Delete', self)
         clear_button = QtWidgets.QPushButton('Clear', self)
         undo_button = QtWidgets.QPushButton('Undo', self)
+
+        self.export_png_radio_button = QtWidgets.QRadioButton('PNG image', self)
+        self.export_bin_radio_button = QtWidgets.QRadioButton('Binary', self)
+        self.export_png_radio_button.setChecked(True)
+
+        export_group = QtWidgets.QButtonGroup(self)
+        export_group.addButton(self.export_png_radio_button)
+        export_group.addButton(self.export_bin_radio_button)
 
         export_button.clicked.connect(self.export_image)
         export_all_button.clicked.connect(self.export_all)
@@ -532,6 +540,7 @@ class TriangulateWidget(QtWidgets.QWidget):
         self.n_to_cc_input = QtWidgets.QLineEdit(str(self.display.n_imgs), self)
         cross_corr_w_prev_button = QtWidgets.QPushButton('Cross-corr. with prev.', self)
         cross_corr_n_images_button = QtWidgets.QPushButton('Cross-corr. N images', self)
+        cross_corr_n_images_button.setFixedWidth(130)
         shift_button = QtWidgets.QPushButton('Shift', self)
         warp_button = QtWidgets.QPushButton('Warp', self)
 
@@ -640,6 +649,8 @@ class TriangulateWidget(QtWidgets.QWidget):
         grid_disp.addWidget(self.fname_input, 1, 4)
         grid_disp.addWidget(export_button, 2, 4)
         grid_disp.addWidget(export_all_button, 3, 4)
+        grid_disp.addWidget(self.export_png_radio_button, 1, 5)
+        grid_disp.addWidget(self.export_bin_radio_button, 2, 5)
 
         mesh_down_button.setFixedWidth(mesh_up_button.width())
 
@@ -862,46 +873,52 @@ class TriangulateWidget(QtWidgets.QWidget):
 
     def export_image(self):
         curr_num = self.display.image.numInSeries
-        fname = self.fname_input.text()
+        curr_img = self.display.image
         is_amp_checked = self.amp_radio_button.isChecked()
         is_phs_checked = self.phs_radio_button.isChecked()
-
-        log = True if self.log_scale_checkbox.isChecked() else False
-        color = True if self.color_radio_button.isChecked() else False
-
+        fname = self.fname_input.text()
         if fname == '':
-            fname = 'amp{0}'.format(curr_num) if is_amp_checked else 'phs{0}'.format(curr_num)
+            if is_amp_checked:
+                fname = 'amp{0}'.format(curr_num)
+            elif is_phs_checked:
+                fname = 'phs{0}'.format(curr_num)
+            else:
+                fname = 'cos_phs{0}'.format(curr_num)
 
-        curr_img = self.display.image
-        if is_amp_checked:
-            imsup.SaveAmpImage(curr_img, '{0}.png'.format(fname), log, color)
-        elif is_phs_checked:
-            imsup.SavePhaseImage(curr_img, '{0}.png'.format(fname), log, color)
+        if self.export_bin_radio_button.isChecked():
+            if is_amp_checked:
+                # np.save(fname, curr_img.amPh.am)
+                curr_img.amPh.am.tofile(fname)
+            elif is_phs_checked:
+                # np.save(fname, curr_img.amPh.ph)
+                curr_img.amPh.ph.tofile(fname)
+            else:
+                cos_phs = np.cos(curr_img.amPh.ph)
+                cos_phs.tofile(fname)
+                # np.save(fname, cos_phs)
+            print('Saved image to binary file: "{0}"'.format(fname))
         else:
-            phs_tmp = np.copy(curr_img.amPh.ph)
-            curr_img.amPh.ph = np.cos(phs_tmp)
-            imsup.SavePhaseImage(curr_img, '{0}.png'.format(fname), log, color)
-            curr_img.amPh.ph = np.copy(phs_tmp)
-        print('Saved image as "{0}.png"'.format(fname))
-
-    def export_all(self):
-        curr_img = imsup.GetFirstImage(self.display.image)
-
-        while curr_img is not None:
-            curr_num = curr_img.numInSeries
-            fname = curr_img.name
-            is_amp_checked = self.amp_radio_button.isChecked()
-
-            if fname == '':
-                fname = 'amp{0}'.format(curr_num) if is_amp_checked else 'phs{0}'.format(curr_num)
+            log = True if self.log_scale_checkbox.isChecked() else False
+            color = True if self.color_radio_button.isChecked() else False
 
             if is_amp_checked:
-                imsup.SaveAmpImage(curr_img, '{0}.png'.format(fname))
+                imsup.SaveAmpImage(curr_img, '{0}.png'.format(fname), log, color)
+            elif is_phs_checked:
+                imsup.SavePhaseImage(curr_img, '{0}.png'.format(fname), log, color)
             else:
-                imsup.SavePhaseImage(curr_img, '{0}.png'.format(fname))
-
+                phs_tmp = np.copy(curr_img.amPh.ph)
+                curr_img.amPh.ph = np.cos(phs_tmp)
+                imsup.SavePhaseImage(curr_img, '{0}.png'.format(fname), log, color)
+                curr_img.amPh.ph = np.copy(phs_tmp)
             print('Saved image as "{0}.png"'.format(fname))
-            curr_img = curr_img.next
+
+    def export_all(self):
+        first_img = imsup.GetFirstImage(self.display.image)
+        imgs = imsup.CreateImageListFromFirstImage(first_img)
+        for img in imgs:
+            self.go_to_image(img.numInSeries - 1)
+            self.export_image()
+        print('All images saved')
 
     def delete_image(self):
         curr_img = self.display.image
@@ -1455,7 +1472,7 @@ class TriangulateWidget(QtWidgets.QWidget):
             ccfg.GetGPUMemoryUsed()
             exit_wave.ReIm2AmPh()
             exit_wave.MoveToCPU()
-            exit_wave.name = 'wave_fun_0{0}.png'.format(i+1) if i < 9 else 'ewf_{0}.png'.format(i+1)
+            exit_wave.name = 'wave_fun_0{0}.png'.format(i+1) if i < 9 else 'wave_fun_{0}.png'.format(i+1)
             self.insert_img_last(exit_wave)
             self.go_to_last_image()
             if i < n_iters - 1:
