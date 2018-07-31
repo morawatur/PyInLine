@@ -778,7 +778,7 @@ class TriangulateWidget(QtWidgets.QWidget):
         self.setLayout(vbox_main)
 
         self.move(250, 5)
-        self.setWindowTitle('Holo window')
+        self.setWindowTitle('PyInLine')
         self.setWindowIcon(QtGui.QIcon('gui/world.png'))
         self.show()
         self.setFixedSize(self.width(), self.height())  # disable window resizing
@@ -828,11 +828,12 @@ class TriangulateWidget(QtWidgets.QWidget):
         self.fname_input.setText(self.name_input.text())
 
     def go_to_image(self, new_idx):
-        is_amp_checked = self.amp_radio_button.isChecked()
-        is_phs_checked = self.phs_radio_button.isChecked()
-        is_log_scale_checked = self.log_scale_checkbox.isChecked()
-        is_show_labels_checked = self.show_labels_checkbox.isChecked()
-        is_color_checked = self.color_radio_button.isChecked()
+        # simplify this!
+        # is_amp_checked = self.amp_radio_button.isChecked()
+        # is_phs_checked = self.phs_radio_button.isChecked()
+        # is_log_scale_checked = self.log_scale_checkbox.isChecked()
+        # is_show_labels_checked = self.show_labels_checkbox.isChecked()
+        # is_color_checked = self.color_radio_button.isChecked()
         first_img = imsup.GetFirstImage(self.display.image)
         imgs = imsup.CreateImageListFromFirstImage(first_img)
         if new_idx > len(imgs) - 1:
@@ -844,8 +845,10 @@ class TriangulateWidget(QtWidgets.QWidget):
         self.fname_input.setText(curr_img.name)
         self.manual_mode_checkbox.setChecked(False)
         self.disable_manual_panel()
-        self.display.change_image(new_idx, dispAmp=is_amp_checked, dispPhs=is_phs_checked,
-                                  logScale=is_log_scale_checked, dispLabs=is_show_labels_checked, color=is_color_checked)
+        self.display.image = imgs[new_idx]
+        # self.display.change_image(new_idx, dispAmp=is_amp_checked, dispPhs=is_phs_checked,
+        #                           logScale=is_log_scale_checked, dispLabs=is_show_labels_checked, color=is_color_checked)
+        self.update_display_and_bcg()
 
     def go_to_prev_image(self):
         curr_img = self.display.image
@@ -961,6 +964,17 @@ class TriangulateWidget(QtWidgets.QWidget):
         is_color_checked = self.color_radio_button.isChecked()
         self.display.setImage(dispAmp=is_amp_checked, dispPhs=is_phs_checked,
                               logScale=is_log_scale_checked, color=is_color_checked)
+
+    def update_bcg(self):
+        bright_val = int(self.bright_input.text())
+        cont_val = int(self.cont_input.text())
+        gamma_val = float(self.gamma_input.text())
+
+        self.change_bright_slider_value()
+        self.change_cont_slider_value()
+        self.change_gamma_slider_value()
+
+        self.display.setImage(update_bcg=True, bright=bright_val, cont=cont_val, gamma=gamma_val)
 
     def update_display_and_bcg(self):
         is_amp_checked = self.amp_radio_button.isChecked()
@@ -1472,7 +1486,7 @@ class TriangulateWidget(QtWidgets.QWidget):
             ccfg.GetGPUMemoryUsed()
             exit_wave.ReIm2AmPh()
             exit_wave.MoveToCPU()
-            exit_wave.name = 'wave_fun_0{0}.png'.format(i+1) if i < 9 else 'wave_fun_{0}.png'.format(i+1)
+            exit_wave.name = 'wave_fun_0{0}'.format(i+1) if i < 9 else 'wave_fun_{0}'.format(i+1)
             self.insert_img_last(exit_wave)
             self.go_to_last_image()
             if i < n_iters - 1:
