@@ -712,7 +712,7 @@ class TriangulateWidget(QtWidgets.QWidget):
 
         self.gamma_slider = QtWidgets.QSlider(QtCore.Qt.Horizontal)
         self.gamma_slider.setFixedHeight(14)
-        self.gamma_slider.setRange(50, 150)
+        self.gamma_slider.setRange(10, 190)     # !!!
         self.gamma_slider.setValue(100)
 
         self.bright_slider.valueChanged.connect(self.disp_bright_value)
@@ -889,6 +889,7 @@ class TriangulateWidget(QtWidgets.QWidget):
                 fname = 'cos_phs{0}'.format(curr_num)
 
         if self.export_bin_radio_button.isChecked():
+            fname_ext = ''
             if is_amp_checked:
                 # np.save(fname, curr_img.amPh.am)
                 curr_img.amPh.am.tofile(fname)
@@ -901,6 +902,7 @@ class TriangulateWidget(QtWidgets.QWidget):
                 # np.save(fname, cos_phs)
             print('Saved image to binary file: "{0}"'.format(fname))
         else:
+            fname_ext = '.png'
             log = True if self.log_scale_checkbox.isChecked() else False
             color = True if self.color_radio_button.isChecked() else False
 
@@ -914,6 +916,15 @@ class TriangulateWidget(QtWidgets.QWidget):
                 imsup.SavePhaseImage(curr_img, '{0}.png'.format(fname), log, color)
                 curr_img.amPh.ph = np.copy(phs_tmp)
             print('Saved image as "{0}.png"'.format(fname))
+
+        # save log file
+        log_fname = '{0}_log.txt'.format(fname)
+        with open(log_fname, 'w') as log_file:
+            log_file.write('File name:\t{0}{1}\n'
+                           'Image name:\t{2}\n'
+                           'Image size:\t{3}x{4}\n'
+                           'Calibration:\t{5} nm\n'.format(fname, fname_ext, curr_img.name, curr_img.width, curr_img.height, curr_img.px_dim * 1e9))
+        print('Saved log file: "{0}"'.format(log_fname))
 
     def export_all(self):
         first_img = imsup.GetFirstImage(self.display.image)
