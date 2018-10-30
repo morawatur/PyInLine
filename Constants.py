@@ -28,8 +28,8 @@ hann_win = 850
 
 dirac_const = 6.582119514e-16      # eV * s
 
-A1_amp = 1.521e-9
-A1_phs = 355.4
+A1_amp = 0.0
+A1_phs = 0.0
 Cs = 0.0
-df_spread = 3.7e-9
+df_spread = 0.0
 conv_angle = 0.0
