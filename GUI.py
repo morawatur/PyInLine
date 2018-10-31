@@ -367,6 +367,10 @@ class TriangulateWidget(QtWidgets.QWidget):
         self.rot_angle = 0
         self.mag_coeff = 1.0
         self.warp_points = []
+        self.curr_iter = 0
+        self.curr_exit_wave = None      # !!!
+        self.curr_ewr_imgs = None       # !!!
+        self.curr_ddfs = [0]            # !!!
         self.initUI()
 
     def initUI(self):
@@ -381,7 +385,8 @@ class TriangulateWidget(QtWidgets.QWidget):
         lswap_button = QtWidgets.QPushButton('L-Swap', self)
         rswap_button = QtWidgets.QPushButton('R-Swap', self)
         flip_button = QtWidgets.QPushButton('Flip', self)
-        name_it_button = QtWidgets.QPushButton('Set name', self)
+        set_name_button = QtWidgets.QPushButton('Set name', self)
+        reset_names_button = QtWidgets.QPushButton('Reset names', self)
         zoom_button = QtWidgets.QPushButton('Crop N ROIs', self)
         delete_button = QtWidgets.QPushButton('Delete', self)
         clear_button = QtWidgets.QPushButton('Clear', self)
@@ -392,7 +397,8 @@ class TriangulateWidget(QtWidgets.QWidget):
         lswap_button.clicked.connect(self.swap_left)
         rswap_button.clicked.connect(self.swap_right)
         flip_button.clicked.connect(self.flip_image_h)
-        name_it_button.clicked.connect(self.set_image_name)
+        set_name_button.clicked.connect(self.set_image_name)
+        reset_names_button.clicked.connect(self.reset_image_names)
         zoom_button.clicked.connect(self.zoom_n_fragments)
         delete_button.clicked.connect(self.delete_image)
         clear_button.clicked.connect(self.clear_image)
@@ -402,7 +408,7 @@ class TriangulateWidget(QtWidgets.QWidget):
         self.n_to_zoom_input = QtWidgets.QLineEdit('1', self)
 
         hbox_name = QtWidgets.QHBoxLayout()
-        hbox_name.addWidget(name_it_button)
+        hbox_name.addWidget(set_name_button)
         hbox_name.addWidget(self.name_input)
 
         hbox_zoom = QtWidgets.QHBoxLayout()
@@ -418,7 +424,7 @@ class TriangulateWidget(QtWidgets.QWidget):
         self.tab_nav.layout.setColumnStretch(4, 1)
         self.tab_nav.layout.setColumnStretch(5, 1)
         self.tab_nav.layout.setRowStretch(0, 1)
-        self.tab_nav.layout.setRowStretch(6, 1)
+        self.tab_nav.layout.setRowStretch(7, 1)
         self.tab_nav.layout.addWidget(prev_button, 1, 1, 1, 2)
         self.tab_nav.layout.addWidget(next_button, 1, 3, 1, 2)
         self.tab_nav.layout.addWidget(lswap_button, 2, 1, 1, 2)
@@ -428,9 +434,10 @@ class TriangulateWidget(QtWidgets.QWidget):
         self.tab_nav.layout.addWidget(zoom_button, 4, 1)
         self.tab_nav.layout.addWidget(self.n_to_zoom_input, 4, 2)
         self.tab_nav.layout.addWidget(delete_button, 4, 3, 1, 2)
-        self.tab_nav.layout.addWidget(name_it_button, 5, 1)
+        self.tab_nav.layout.addWidget(set_name_button, 5, 1)
         self.tab_nav.layout.addWidget(self.name_input, 5, 2)
         self.tab_nav.layout.addWidget(undo_button, 5, 3, 1, 2)
+        self.tab_nav.layout.addWidget(reset_names_button, 6, 1, 1, 2)
         self.tab_nav.setLayout(self.tab_nav.layout)
 
         # ------------------------------
@@ -626,29 +633,30 @@ class TriangulateWidget(QtWidgets.QWidget):
 
         grid_auto = QtWidgets.QGridLayout()
         grid_auto.setColumnStretch(0, 1)
-        grid_auto.setColumnStretch(1, 2)
-        grid_auto.setColumnStretch(2, 2)
-        grid_auto.setColumnStretch(3, 2)
+        grid_auto.setColumnStretch(1, 1)
+        grid_auto.setColumnStretch(2, 1)
+        grid_auto.setColumnStretch(3, 1)
         grid_auto.setColumnStretch(4, 1)
         grid_auto.setColumnStretch(5, 1)
         grid_auto.setColumnStretch(6, 1)
+        grid_auto.setColumnStretch(7, 1)
         grid_auto.setRowStretch(0, 1)
         grid_auto.setRowStretch(5, 1)
         grid_auto.addLayout(self.btn_grid, 1, 1, 4, 1)
         grid_auto.addWidget(mesh_up_button, 1, 2)
-        grid_auto.addWidget(mesh_down_button, 1, 3)
-        grid_auto.addWidget(cross_corr_w_prev_button, 2, 2, 1, 2)
-        grid_auto.addWidget(cross_corr_n_images_button, 3, 2)
-        grid_auto.addWidget(self.n_to_cc_input, 3, 3)
-        grid_auto.addWidget(shift_button, 4, 2)
+        grid_auto.addWidget(mesh_down_button, 2, 2)
+        grid_auto.addWidget(cross_corr_w_prev_button, 1, 3, 1, 2)
+        grid_auto.addWidget(cross_corr_n_images_button, 2, 3)
+        grid_auto.addWidget(self.n_to_cc_input, 2, 4)
+        grid_auto.addWidget(shift_button, 3, 3)
         grid_auto.addWidget(warp_button, 4, 3)
-        grid_auto.addWidget(self.det_df_checkbox, 1, 4)
-        grid_auto.addWidget(self.df_min_label, 2, 4)
-        grid_auto.addWidget(df_max_label, 3, 4)
-        grid_auto.addWidget(df_step_label, 4, 4)
-        grid_auto.addWidget(self.df_min_input, 2, 5)
-        grid_auto.addWidget(self.df_max_input, 3, 5)
-        grid_auto.addWidget(self.df_step_input, 4, 5)
+        grid_auto.addWidget(self.det_df_checkbox, 1, 5)
+        grid_auto.addWidget(self.df_min_label, 2, 5)
+        grid_auto.addWidget(df_max_label, 3, 5)
+        grid_auto.addWidget(df_step_label, 4, 5)
+        grid_auto.addWidget(self.df_min_input, 2, 6)
+        grid_auto.addWidget(self.df_max_input, 3, 6)
+        grid_auto.addWidget(self.df_step_input, 4, 6)
 
         self.tab_align = QtWidgets.QWidget()
         self.tab_align.layout = QtWidgets.QVBoxLayout()
@@ -660,21 +668,23 @@ class TriangulateWidget(QtWidgets.QWidget):
         # IWFR panel (5)
         # ------------------------------
 
-        run_ewr_button = QtWidgets.QPushButton('Run reconstruction', self)
+        run_ewr_next_button = QtWidgets.QPushButton('Run next EWR iters -->', self)
+        reset_ewr_button = QtWidgets.QPushButton('Reset EWR', self)
         sum_button = QtWidgets.QPushButton('Sum', self)
         diff_button = QtWidgets.QPushButton('Diff', self)
         amplify_button = QtWidgets.QPushButton('Amplify', self)
         plot_button = QtWidgets.QPushButton('Plot profile', self)
 
-        in_focus_label = QtWidgets.QLabel('In-focus', self)
+        in_focus_label = QtWidgets.QLabel('In-focus image number', self)
+        start_num_label = QtWidgets.QLabel('Starting image number', self)
         n_to_ewr_label = QtWidgets.QLabel('Num. of images to use', self)
-        n_iters_label = QtWidgets.QLabel('Num. of iterations', self)
         aperture_label = QtWidgets.QLabel('Aperture radius [px]', self)
         hann_win_label = QtWidgets.QLabel('Hann window [px]', self)
         amp_factor_label = QtWidgets.QLabel('Amp. factor', self)
         int_width_label = QtWidgets.QLabel('Profile width [px]', self)
 
         self.in_focus_input = QtWidgets.QLineEdit('1', self)
+        self.start_num_input = QtWidgets.QLineEdit('1', self)
         self.n_to_ewr_input = QtWidgets.QLineEdit(str(self.display.n_imgs), self)
         self.n_iters_input = QtWidgets.QLineEdit('10', self)
         self.aperture_input = QtWidgets.QLineEdit(str(const.aperture), self)
@@ -688,40 +698,60 @@ class TriangulateWidget(QtWidgets.QWidget):
         self.det_abs_df_checkbox = QtWidgets.QCheckBox('Det. abs. defoc. values', self)
         self.det_abs_df_checkbox.setChecked(True)
 
-        run_ewr_button.clicked.connect(self.run_ewr)
+        run_ewr_next_button.clicked.connect(self.run_ewr_next_iters)
+        reset_ewr_button.clicked.connect(self.reset_ewr)
         sum_button.clicked.connect(self.calc_phs_sum)
         diff_button.clicked.connect(self.calc_phs_diff)
         amplify_button.clicked.connect(self.amplify_phase)
         plot_button.clicked.connect(self.plot_profile)
 
-        self.tab_iwfr = QtWidgets.QWidget()
-        self.tab_iwfr.layout = QtWidgets.QGridLayout()
-        self.tab_iwfr.layout.setColumnStretch(0, 1)
-        self.tab_iwfr.layout.setColumnStretch(5, 1)
-        self.tab_iwfr.layout.setRowStretch(0, 1)
-        self.tab_iwfr.layout.setRowStretch(7, 1)
-        self.tab_iwfr.layout.addWidget(in_focus_label, 1, 1)
-        self.tab_iwfr.layout.addWidget(self.in_focus_input, 2, 1)
-        self.tab_iwfr.layout.addWidget(n_to_ewr_label, 3, 1)
-        self.tab_iwfr.layout.addWidget(self.n_to_ewr_input, 4, 1)
-        self.tab_iwfr.layout.addWidget(aperture_label, 1, 2)
-        self.tab_iwfr.layout.addWidget(self.aperture_input, 2, 2)
-        self.tab_iwfr.layout.addWidget(n_iters_label, 3, 2)
-        self.tab_iwfr.layout.addWidget(self.n_iters_input, 4, 2)
-        self.tab_iwfr.layout.addWidget(hann_win_label, 1, 3)
-        self.tab_iwfr.layout.addWidget(self.hann_win_input, 2, 3)
-        self.tab_iwfr.layout.addWidget(amp_factor_label, 1, 4)
-        self.tab_iwfr.layout.addWidget(self.amp_factor_input, 2, 4)
-        self.tab_iwfr.layout.addWidget(sum_button, 3, 3)
-        self.tab_iwfr.layout.addWidget(diff_button, 4, 3)
-        self.tab_iwfr.layout.addWidget(amplify_button, 3, 4)
-        self.tab_iwfr.layout.addWidget(self.use_aberrs_checkbox, 5, 1)
-        self.tab_iwfr.layout.addWidget(self.det_abs_df_checkbox, 6, 1)
-        self.tab_iwfr.layout.addWidget(run_ewr_button, 5, 2)
-        self.tab_iwfr.layout.addWidget(plot_button, 5, 3)
-        self.tab_iwfr.layout.addWidget(int_width_label, 4, 4)
-        self.tab_iwfr.layout.addWidget(self.int_width_input, 5, 4)
-        self.tab_iwfr.setLayout(self.tab_iwfr.layout)
+        grid_iwfr = QtWidgets.QGridLayout()
+        grid_iwfr.setColumnStretch(0, 1)
+        grid_iwfr.setColumnStretch(1, 1)
+        grid_iwfr.setColumnStretch(2, 1)
+        grid_iwfr.setColumnStretch(3, 1)
+        grid_iwfr.setColumnStretch(4, 1)
+        grid_iwfr.setColumnStretch(5, 1)
+        grid_iwfr.setRowStretch(0, 1)
+        grid_iwfr.setRowStretch(7, 1)
+        grid_iwfr.addWidget(start_num_label, 1, 1)
+        grid_iwfr.addWidget(self.start_num_input, 1, 2)
+        grid_iwfr.addWidget(in_focus_label, 2, 1)
+        grid_iwfr.addWidget(self.in_focus_input, 2, 2)
+        grid_iwfr.addWidget(n_to_ewr_label, 3, 1)
+        grid_iwfr.addWidget(self.n_to_ewr_input, 3, 2)
+        grid_iwfr.addWidget(self.n_iters_input, 5, 2)
+        grid_iwfr.addWidget(aperture_label, 2, 4)
+        grid_iwfr.addWidget(self.aperture_input, 3, 4)
+        grid_iwfr.addWidget(hann_win_label, 4, 4)
+        grid_iwfr.addWidget(self.hann_win_input, 5, 4)
+        grid_iwfr.addWidget(self.use_aberrs_checkbox, 1, 4)
+        grid_iwfr.addWidget(self.det_abs_df_checkbox, 4, 1)
+        grid_iwfr.addWidget(run_ewr_next_button, 5, 1)
+        grid_iwfr.addWidget(reset_ewr_button, 5, 3)
+
+        grid_calc = QtWidgets.QGridLayout()
+        grid_calc.setColumnStretch(0, 1)
+        grid_calc.setColumnStretch(1, 1)
+        grid_calc.setColumnStretch(2, 1)
+        grid_calc.setColumnStretch(3, 1)
+        grid_calc.setColumnStretch(4, 1)
+        grid_calc.setRowStretch(0, 1)
+        grid_calc.setRowStretch(4, 1)
+        grid_calc.addWidget(sum_button, 2, 1)
+        grid_calc.addWidget(diff_button, 3, 1)
+        grid_calc.addWidget(amp_factor_label, 1, 2)
+        grid_calc.addWidget(self.amp_factor_input, 2, 2)
+        grid_calc.addWidget(amplify_button, 3, 2)
+        grid_calc.addWidget(plot_button, 3, 3)
+        grid_calc.addWidget(int_width_label, 1, 3)
+        grid_calc.addWidget(self.int_width_input, 2, 3)
+
+        self.tab_rec = QtWidgets.QWidget()
+        self.tab_rec.layout = QtWidgets.QVBoxLayout()
+        self.tab_rec.layout.addLayout(grid_iwfr)
+        self.tab_rec.layout.addLayout(grid_calc)
+        self.tab_rec.setLayout(self.tab_rec.layout)
 
         # ------------------------------
         # Bright/Gamma/Contrast panel (7)
@@ -801,7 +831,7 @@ class TriangulateWidget(QtWidgets.QWidget):
         self.tabs.addTab(self.tab_nav, 'Navigation')
         self.tabs.addTab(self.tab_disp, 'Display')
         self.tabs.addTab(self.tab_align, 'Alignment')
-        self.tabs.addTab(self.tab_iwfr, 'Reconstruction')
+        self.tabs.addTab(self.tab_rec, 'Reconstruction')
         self.tabs.addTab(self.tab_corr, 'Corrections')
 
         vbox_panel = QtWidgets.QVBoxLayout()
@@ -863,6 +893,16 @@ class TriangulateWidget(QtWidgets.QWidget):
     def set_image_name(self):
         self.display.image.name = self.name_input.text()
         self.fname_input.setText(self.name_input.text())
+
+    def reset_image_names(self):
+        curr_img = self.display.image
+        first_img = imsup.GetFirstImage(curr_img)
+        img_queue = imsup.CreateImageListFromFirstImage(first_img)
+        for img, idx in zip(img_queue, range(len(img_queue))):
+            img.numInSeries = idx + 1
+            img.name = 'img0{0}'.format(idx+1) if idx < 9 else 'img{0}'.format(idx+1)
+        self.name_input.setText(curr_img.name)
+        self.fname_input.setText(curr_img.name)
 
     def go_to_image(self, new_idx):
         # simplify this!
@@ -1502,17 +1542,26 @@ class TriangulateWidget(QtWidgets.QWidget):
         self.display.repaint()
 
     def run_ewr(self):
+        start_num = int(self.start_num_input.text())
         n_to_ewr = int(self.n_to_ewr_input.text())
         n_iters = int(self.n_iters_input.text())
+
         curr_img = self.display.image
-        first_img = imsup.GetFirstImage(curr_img)
-        all_imgs_list = imsup.CreateImageListFromFirstImage(first_img)
+        tmp = imsup.GetFirstImage(curr_img)
+        for idx in range(start_num):
+            tmp = tmp.next
+        if tmp is None:
+            print('Starting number is invalid!')
+            return
+        start_img = tmp
 
-        n_all_imgs = len(all_imgs_list)
-        if (curr_img.numInSeries - 1) + n_to_ewr > n_all_imgs:
-            n_to_ewr = n_all_imgs - (curr_img.numInSeries - 1)
+        imgs_from_start = imsup.CreateImageListFromFirstImage(start_img)
+        n_imgs = len(imgs_from_start)
 
-        imgs_to_iwfr = imsup.CreateImageListFromImage(curr_img, n_to_ewr)
+        if (start_img.numInSeries - 1) + n_to_ewr > n_imgs:
+            n_to_ewr = n_imgs - (start_img.numInSeries - 1)
+
+        imgs_to_iwfr = imsup.CreateImageListFromImage(start_img, n_to_ewr)
 
         if self.det_abs_df_checkbox.isChecked():
             idx_in_focus = int(self.in_focus_input.text()) - 1
@@ -1547,6 +1596,80 @@ class TriangulateWidget(QtWidgets.QWidget):
         # exit_wave.MoveToCPU()
         # self.insert_img_last(exit_wave)
         # self.go_to_last_image()
+
+    def run_ewr_next_iters(self):
+        n_iters = int(self.n_iters_input.text())
+
+        for it in range(n_iters):
+            self.curr_iter += 1
+            print('Iteration no {0}'.format(self.curr_iter))
+            print('Backward propagation...')
+
+            if self.curr_iter == 1:
+                start_img_num = int(self.start_num_input.text())
+                n_to_ewr = int(self.n_to_ewr_input.text())
+
+                curr_img = self.display.image
+                tmp = imsup.GetFirstImage(curr_img)
+
+                for idx in range(start_img_num-1):
+                    if tmp.next is None:
+                        print('Starting number is invalid!')
+                        break
+                    tmp = tmp.next
+
+                start_img = tmp
+                imgs_from_start = imsup.CreateImageListFromFirstImage(start_img)
+                n_imgs = len(imgs_from_start)
+
+                if n_to_ewr > n_imgs:
+                    n_to_ewr = n_imgs
+
+                self.curr_ewr_imgs = imsup.CreateImageListFromImage(start_img, n_to_ewr)
+
+                if self.det_abs_df_checkbox.isChecked():
+                    idx_in_focus = int(self.in_focus_input.text()) - start_img_num
+                    print('before----------')
+                    for img in self.curr_ewr_imgs:
+                        print('{0:.1f} nm'.format(img.defocus * 1e9))
+                    cc.DetermineAbsoluteDefocus(self.curr_ewr_imgs, idx_in_focus)
+            # ---- (only 1st iteration) ----
+
+            for img in self.curr_ewr_imgs:
+                print('{0:.1f} nm'.format(img.defocus * 1e9))
+
+            self.curr_exit_wave = prop.run_backprop_iter(self.curr_ewr_imgs,
+                                                         self.use_aberrs_checkbox.isChecked(),
+                                                         ap=int(self.aperture_input.text()),
+                                                         hann=int(self.hann_win_input.text()))
+
+            print('Forward propagation...')
+            prop.run_forwprop_iter(self.curr_exit_wave, self.curr_ewr_imgs,
+                                   self.use_aberrs_checkbox.isChecked(),
+                                   ap=int(self.aperture_input.text()),
+                                   hann=int(self.hann_win_input.text()))
+
+        ccfg.GetGPUMemoryUsed()
+        exit_wave_copy = imsup.CopyImage(self.curr_exit_wave)
+        exit_wave_copy.ReIm2AmPh()
+        exit_wave_copy.MoveToCPU()
+        c_it = self.curr_iter
+        exit_wave_copy.name = 'wave_fun_0{0}'.format(c_it) if c_it < 10 else 'wave_fun_{0}'.format(c_it)
+        self.insert_img_last(exit_wave_copy)
+        self.go_to_last_image()
+        print('Done')
+
+    def reset_ewr(self):
+        tmp_ddfs = [0]
+        for img1, img2 in zip(self.curr_ewr_imgs[:-1], self.curr_ewr_imgs[1:]):
+             tmp_ddfs.append(img1.defocus - img2.defocus)
+        for img, ddf in zip(self.curr_ewr_imgs, tmp_ddfs):
+            img.defocus = ddf
+            print('{0:.1f} nm'.format(img.defocus * 1e9))
+        self.curr_iter = 0
+        self.curr_exit_wave = None
+        self.curr_ewr_imgs = None
+        print('EWR procedure was reset')
 
     def plot_profile(self):
         curr_img = self.display.image

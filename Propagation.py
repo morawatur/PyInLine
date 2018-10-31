@@ -208,7 +208,7 @@ def PropagateBackToDefocus(img, defocus, use_other_aberrs=True, aper=const.apert
 
 # -------------------------------------------------------------------
 
-def run_iteration_of_iwfr(imgs_to_ewr, use_aberrs=False, ap=const.aperture, hann=const.hann_win):
+def run_backprop_iter(imgs_to_ewr, use_aberrs=False, ap=const.aperture, hann=const.hann_win):
     n_imgs = len(imgs_to_ewr)
     img_w, img_h = imgs_to_ewr[0].width, imgs_to_ewr[0].height
     exit_wave = imsup.ImageExp(img_h, img_w, imsup.Image.cmp['CRI'], imsup.Image.mem['GPU'])
@@ -221,13 +221,43 @@ def run_iteration_of_iwfr(imgs_to_ewr, use_aberrs=False, ap=const.aperture, hann
         # exit_wave.reIm = arrsup.AddTwoArrays(exit_wave.reIm, img.reIm)
 
     exit_wave.reIm = arrsup.MultArrayByScalar(exit_wave.reIm, 1 / n_imgs)
+    return exit_wave
+
+# -------------------------------------------------------------------
+
+def run_forwprop_iter(exit_wave, imgs_to_ewr, use_aberrs=False, ap=const.aperture, hann=const.hann_win):
+    n_imgs = len(imgs_to_ewr)
 
     for img, idx in zip(imgs_to_ewr, range(0, n_imgs)):
         imgs_to_ewr[idx] = PropagateBackToDefocus(exit_wave, img.defocus, use_other_aberrs=use_aberrs, aper=ap, hann_width=hann)
-        # print(imgs_to_ewr[idx].memType, img.memType)
         img.MoveToCPU()
-        # print(imgs_to_ewr[idx].memType, img.memType)
         imgs_to_ewr[idx].amPh.am = np.copy(img.amPh.am)  # restore original amplitude
+
+# -------------------------------------------------------------------
+
+def run_iteration_of_iwfr(imgs_to_ewr, use_aberrs=False, ap=const.aperture, hann=const.hann_win):
+    # n_imgs = len(imgs_to_ewr)
+    # img_w, img_h = imgs_to_ewr[0].width, imgs_to_ewr[0].height
+    # exit_wave = imsup.ImageExp(img_h, img_w, imsup.Image.cmp['CRI'], imsup.Image.mem['GPU'])
+    #
+    # for img, idx in zip(imgs_to_ewr, range(0, n_imgs)):
+    #     img.MoveToGPU()
+    #     img = PropagateToFocus(img, use_other_aberrs=use_aberrs, aper=ap, hann_width=hann)
+    #     img.AmPh2ReIm()
+    #     exit_wave.reIm = arrsup.AddArrayToArray(exit_wave.reIm, img.reIm)
+    #     # exit_wave.reIm = arrsup.AddTwoArrays(exit_wave.reIm, img.reIm)
+    #
+    # exit_wave.reIm = arrsup.MultArrayByScalar(exit_wave.reIm, 1 / n_imgs)
+    #
+    # for img, idx in zip(imgs_to_ewr, range(0, n_imgs)):
+    #     imgs_to_ewr[idx] = PropagateBackToDefocus(exit_wave, img.defocus, use_other_aberrs=use_aberrs, aper=ap, hann_width=hann)
+    #     # print(imgs_to_ewr[idx].memType, img.memType)
+    #     img.MoveToCPU()
+    #     # print(imgs_to_ewr[idx].memType, img.memType)
+    #     imgs_to_ewr[idx].amPh.am = np.copy(img.amPh.am)  # restore original amplitude
+
+    exit_wave = run_backprop_iter(imgs_to_ewr, use_aberrs, ap, hann)
+    run_forwprop_iter(imgs_to_ewr, exit_wave, use_aberrs, ap, hann)
 
     return imgs_to_ewr, exit_wave
 
