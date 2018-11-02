@@ -113,8 +113,10 @@ class LabelExt(QtWidgets.QLabel):
         self.image = image
         self.setImage()
         self.n_imgs = len(imsup.CreateImageListFromFirstImage(self.image))
-        self.pointSets = [[]] * self.n_imgs
-        # self.pointSets = [[]]
+        self.pointSets = []
+        for i in range(self.n_imgs):
+            self.pointSets.append([])
+        # self.pointSets = [[]] * n_imgs
         self.frag_coords = [0]
         self.show_lines = True
         self.show_labs = True
@@ -380,6 +382,9 @@ class TriangulateWidget(QtWidgets.QWidget):
         # Navigation panel (1)
         # ------------------------------
 
+        self.clear_prev_checkbox = QtWidgets.QCheckBox('Clear prev. images', self)
+        self.clear_prev_checkbox.setChecked(True)
+
         prev_button = QtWidgets.QPushButton('Prev', self)
         next_button = QtWidgets.QPushButton('Next', self)
         lswap_button = QtWidgets.QPushButton('L-Swap', self)
@@ -438,6 +443,7 @@ class TriangulateWidget(QtWidgets.QWidget):
         self.tab_nav.layout.addWidget(self.name_input, 5, 2)
         self.tab_nav.layout.addWidget(undo_button, 5, 3, 1, 2)
         self.tab_nav.layout.addWidget(reset_names_button, 6, 1, 1, 2)
+        self.tab_nav.layout.addWidget(self.clear_prev_checkbox, 6, 3, 1, 2)
         self.tab_nav.setLayout(self.tab_nav.layout)
 
         # ------------------------------
@@ -909,7 +915,7 @@ class TriangulateWidget(QtWidgets.QWidget):
         # is_amp_checked = self.amp_radio_button.isChecked()
         # is_phs_checked = self.phs_radio_button.isChecked()
         # is_log_scale_checked = self.log_scale_checkbox.isChecked()
-        # is_show_labels_checked = self.show_labels_checkbox.isChecked()
+        is_show_labels_checked = self.show_labels_checkbox.isChecked()
         # is_color_checked = self.color_radio_button.isChecked()
         first_img = imsup.GetFirstImage(self.display.image)
         imgs = imsup.CreateImageListFromFirstImage(first_img)
@@ -925,6 +931,7 @@ class TriangulateWidget(QtWidgets.QWidget):
         self.display.image = imgs[new_idx]
         # self.display.change_image(new_idx, dispAmp=is_amp_checked, dispPhs=is_phs_checked,
         #                           logScale=is_log_scale_checked, dispLabs=is_show_labels_checked, color=is_color_checked)
+        self.display.update_labs(is_show_labels_checked)
         self.update_display_and_bcg()
 
     def go_to_prev_image(self):
@@ -1187,11 +1194,23 @@ class TriangulateWidget(QtWidgets.QWidget):
 
         for img, n in zip(img_list2, range(n_to_zoom, 2*n_to_zoom)):
             frag = zoom_fragment(img, real_sq_coords)
+            print(n)
             img_list.insert(n, frag)
-            self.display.pointSets.insert(n, [])
+            self.display.pointSets.insert(curr_idx+n, [])
 
         img_list.UpdateLinks()
-        self.go_to_last_image()
+        self.go_to_prev_image()
+
+        # niestworzone rzeczy sie tu dziejo!
+        if self.clear_prev_checkbox.isChecked():
+            if img_list[0].prev is not None:
+                img_list[0].prev.next = img_list[n_to_zoom]
+            img_list[n_to_zoom].prev = img_list[0].prev
+            del img_list[:n_to_zoom]
+            del self.display.pointSets[curr_idx:curr_idx+n_to_zoom]
+
+        img_list.UpdateLinks()
+        # self.go_to_last_image()
         print('Zooming complete!')
 
     def clear_image(self):
@@ -1629,9 +1648,6 @@ class TriangulateWidget(QtWidgets.QWidget):
 
                 if self.det_abs_df_checkbox.isChecked():
                     idx_in_focus = int(self.in_focus_input.text()) - start_img_num
-                    print('before----------')
-                    for img in self.curr_ewr_imgs:
-                        print('{0:.1f} nm'.format(img.defocus * 1e9))
                     cc.DetermineAbsoluteDefocus(self.curr_ewr_imgs, idx_in_focus)
             # ---- (only 1st iteration) ----
 
@@ -1663,12 +1679,13 @@ class TriangulateWidget(QtWidgets.QWidget):
         tmp_ddfs = [0]
         for img1, img2 in zip(self.curr_ewr_imgs[:-1], self.curr_ewr_imgs[1:]):
              tmp_ddfs.append(img1.defocus - img2.defocus)
-        for img, ddf in zip(self.curr_ewr_imgs, tmp_ddfs):
+        first_img = imsup.GetFirstImage(self.display.image)
+        new_img_list = imsup.CreateImageListFromFirstImage(first_img)
+        for img, ddf in zip(new_img_list, tmp_ddfs):
             img.defocus = ddf
-            print('{0:.1f} nm'.format(img.defocus * 1e9))
         self.curr_iter = 0
         self.curr_exit_wave = None
-        self.curr_ewr_imgs = None
+        # self.curr_ewr_imgs = None
         print('EWR procedure was reset')
 
     def plot_profile(self):
