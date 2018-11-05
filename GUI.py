@@ -760,6 +760,40 @@ class TriangulateWidget(QtWidgets.QWidget):
         self.tab_rec.setLayout(self.tab_rec.layout)
 
         # ------------------------------
+        # Simulations panel (7)
+        # ------------------------------
+
+        sim_button = QtWidgets.QPushButton('Simulate', self)
+
+        df_sim_label = QtWidgets.QLabel('Defocus [nm]', self)
+        A1_sim_label = QtWidgets.QLabel('A1 [nm]', self)
+        phi1_sim_label = QtWidgets.QLabel('A1 angle [deg]', self)
+
+        self.df_sim_input = QtWidgets.QLineEdit('0', self)
+        self.A1_sim_input = QtWidgets.QLineEdit('0', self)
+        self.phi1_sim_input = QtWidgets.QLineEdit('0', self)
+
+        sim_button.clicked.connect(self.simulate_image_for_df)
+
+        self.tab_sim = QtWidgets.QWidget()
+        self.tab_sim.layout = QtWidgets.QGridLayout()
+        self.tab_sim.layout.setColumnStretch(0, 1)
+        self.tab_sim.layout.setColumnStretch(1, 1)
+        self.tab_sim.layout.setColumnStretch(2, 1)
+        self.tab_sim.layout.setColumnStretch(3, 1)
+        self.tab_sim.layout.setColumnStretch(4, 1)
+        self.tab_sim.layout.setRowStretch(0, 1)
+        self.tab_sim.layout.setRowStretch(4, 1)
+        self.tab_sim.layout.addWidget(sim_button, 1, 1)
+        self.tab_sim.layout.addWidget(df_sim_label, 1, 2)
+        self.tab_sim.layout.addWidget(self.df_sim_input, 1, 3)
+        self.tab_sim.layout.addWidget(A1_sim_label, 2, 2)
+        self.tab_sim.layout.addWidget(self.A1_sim_input, 2, 3)
+        self.tab_sim.layout.addWidget(phi1_sim_label, 3, 2)
+        self.tab_sim.layout.addWidget(self.phi1_sim_input, 3, 3)
+        self.tab_sim.setLayout(self.tab_sim.layout)
+
+        # ------------------------------
         # Bright/Gamma/Contrast panel (7)
         # ------------------------------
 
@@ -838,6 +872,7 @@ class TriangulateWidget(QtWidgets.QWidget):
         self.tabs.addTab(self.tab_disp, 'Display')
         self.tabs.addTab(self.tab_align, 'Alignment')
         self.tabs.addTab(self.tab_rec, 'Reconstruction')
+        self.tabs.addTab(self.tab_sim, 'Simulation')
         self.tabs.addTab(self.tab_corr, 'Corrections')
 
         vbox_panel = QtWidgets.QVBoxLayout()
@@ -1189,28 +1224,28 @@ class TriangulateWidget(QtWidgets.QWidget):
         real_sq_coords = imsup.MakeSquareCoords(real_tl_coords)
 
         n_to_zoom = np.int(self.n_to_zoom_input.text())
-        img_list = imsup.CreateImageListFromFirstImage(curr_img)
-        img_list2 = img_list[:n_to_zoom]
+        first_img = imsup.GetFirstImage(curr_img)
+        insert_idx = curr_idx + n_to_zoom
+        img_list = imsup.CreateImageListFromFirstImage(first_img)
+        img_list2 = img_list[curr_idx:insert_idx]
 
-        for img, n in zip(img_list2, range(n_to_zoom, 2*n_to_zoom)):
+        for img, n in zip(img_list2, range(insert_idx, insert_idx + n_to_zoom)):
             frag = zoom_fragment(img, real_sq_coords)
-            print(n)
             img_list.insert(n, frag)
-            self.display.pointSets.insert(curr_idx+n, [])
+            self.display.pointSets.insert(n, [])
 
         img_list.UpdateLinks()
-        self.go_to_prev_image()
 
-        # niestworzone rzeczy sie tu dziejo!
         if self.clear_prev_checkbox.isChecked():
-            if img_list[0].prev is not None:
-                img_list[0].prev.next = img_list[n_to_zoom]
-            img_list[n_to_zoom].prev = img_list[0].prev
-            del img_list[:n_to_zoom]
-            del self.display.pointSets[curr_idx:curr_idx+n_to_zoom]
+            # if img_list[curr_idx].prev is not None:
+            #     img_list[curr_idx].prev.next = img_list[insert_idx]
+            # img_list[insert_idx].prev = img_list[curr_idx].prev
+            # del img_list[curr_idx:insert_idx]
+            delete_n_prev_images(img_list, curr_idx, insert_idx)
+            del self.display.pointSets[curr_idx:insert_idx]
+            # img_list.UpdateLinks()
 
-        img_list.UpdateLinks()
-        # self.go_to_last_image()
+        self.go_to_image(curr_idx)
         print('Zooming complete!')
 
     def clear_image(self):
@@ -1323,14 +1358,16 @@ class TriangulateWidget(QtWidgets.QWidget):
     def cross_corr_n_images(self):
         n_to_cc = int(self.n_to_cc_input.text())
         curr_img = self.display.image
+        curr_idx = curr_img.numInSeries - 1
+        insert_idx = curr_idx + n_to_cc
         first_img = imsup.GetFirstImage(curr_img)
         all_img_list = imsup.CreateImageListFromFirstImage(first_img)
         n_imgs = len(all_img_list)
         # n_point_sets = len(self.display.pointSets)
         # n_diff = n_imgs - n_point_sets
         # self.display.pointSets.append([] * n_diff)
-        if (curr_img.numInSeries - 1) + n_to_cc > n_imgs:
-            n_to_cc = n_imgs - (curr_img.numInSeries - 1)
+        if insert_idx > n_imgs:
+            n_to_cc = n_imgs - curr_idx
         img_list_to_cc = imsup.CreateImageListFromImage(curr_img, n_to_cc)
         img_align_list = self.cross_corr_core(img_list_to_cc)
 
@@ -1338,7 +1375,17 @@ class TriangulateWidget(QtWidgets.QWidget):
         self.insert_img_last(ref_img)
         for img in img_align_list:
             self.insert_img_last(img)
+
         self.go_to_last_image()
+
+        # przetestowac to
+        if self.clear_prev_checkbox.isChecked():
+            print(len(all_img_list))
+            all_img_list = imsup.CreateImageListFromFirstImage(imsup.GetFirstImage(curr_img))
+            print(len(all_img_list))
+            delete_n_prev_images(all_img_list, curr_idx, insert_idx)
+            del self.display.pointSets[curr_idx:insert_idx]
+
         print('Cross-correlation done!')
 
     def cross_corr_core(self, img_list_to_cc):
@@ -1749,6 +1796,16 @@ class TriangulateWidget(QtWidgets.QWidget):
 
         self.plot_widget.plot(dists, int_profile, 'Distance [nm]', 'Intensity [a.u.]')
 
+    def simulate_image_for_df(self):
+        curr_img = self.display.image
+        defocus = float(self.df_sim_input.text()) * 1e-9
+        A1 = float(self.A1_sim_input.text()) * 1e-9
+        phi1 = float(self.phi1_sim_input.text()) * 1e-9
+        const.A1_amp = A1
+        const.A1_phs = phi1
+        sim_img = prop.PropagateBackToDefocus(curr_img, defocus, True)
+        self.insert_img_after_curr(sim_img)
+
 # --------------------------------------------------------
 
 def LoadImageSeriesFromFirstFile(imgPath):
@@ -1783,6 +1840,15 @@ def LoadImageSeriesFromFirstFile(imgPath):
 
     imgList.UpdateLinks()
     return imgList[0]
+
+# --------------------------------------------------------
+
+def delete_n_prev_images(imgs, idx1, idx2):      # like del imgs[idx1:idx2]
+    if imgs[idx1].prev is not None:
+        imgs[idx1].prev.next = imgs[idx2]
+    imgs[idx2].prev = imgs[idx1].prev
+    del imgs[idx1:idx2]
+    imgs.UpdateLinks()
 
 # --------------------------------------------------------
 
