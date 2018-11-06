@@ -358,7 +358,6 @@ class TriangulateWidget(QtWidgets.QWidget):
             print('No images to read. Exiting...')
             exit()
         image = LoadImageSeriesFromFirstFile(image_path)
-        image.name = 'img01'
         self.display = LabelExt(self, image)
         self.display.setFixedWidth(const.ccWidgetDim)
         self.display.setFixedHeight(const.ccWidgetDim)
@@ -409,7 +408,7 @@ class TriangulateWidget(QtWidgets.QWidget):
         clear_button.clicked.connect(self.clear_image)
         undo_button.clicked.connect(self.remove_last_point)
 
-        self.name_input = QtWidgets.QLineEdit('ref', self)
+        self.name_input = QtWidgets.QLineEdit(self.display.image.name, self)
         self.n_to_zoom_input = QtWidgets.QLineEdit('1', self)
 
         hbox_name = QtWidgets.QHBoxLayout()
@@ -885,6 +884,8 @@ class TriangulateWidget(QtWidgets.QWidget):
 
         self.setLayout(hbox_main)
 
+        self.reset_image_names()  # !!!
+
         self.move(250, 50)
         self.setWindowTitle('Holo window')
         self.setWindowIcon(QtGui.QIcon('gui/world.png'))
@@ -946,12 +947,7 @@ class TriangulateWidget(QtWidgets.QWidget):
         self.fname_input.setText(curr_img.name)
 
     def go_to_image(self, new_idx):
-        # simplify this!
-        # is_amp_checked = self.amp_radio_button.isChecked()
-        # is_phs_checked = self.phs_radio_button.isChecked()
-        # is_log_scale_checked = self.log_scale_checkbox.isChecked()
         is_show_labels_checked = self.show_labels_checkbox.isChecked()
-        # is_color_checked = self.color_radio_button.isChecked()
         first_img = imsup.GetFirstImage(self.display.image)
         imgs = imsup.CreateImageListFromFirstImage(first_img)
         if new_idx > len(imgs) - 1:
@@ -964,8 +960,6 @@ class TriangulateWidget(QtWidgets.QWidget):
         self.manual_mode_checkbox.setChecked(False)
         self.disable_manual_panel()
         self.display.image = imgs[new_idx]
-        # self.display.change_image(new_idx, dispAmp=is_amp_checked, dispPhs=is_phs_checked,
-        #                           logScale=is_log_scale_checked, dispLabs=is_show_labels_checked, color=is_color_checked)
         self.display.update_labs(is_show_labels_checked)
         self.update_display_and_bcg()
 
@@ -1060,21 +1054,13 @@ class TriangulateWidget(QtWidgets.QWidget):
 
         curr_idx = curr_img.numInSeries - 1
         first_img = imsup.GetFirstImage(curr_img)
-        tmp_img_list = imsup.CreateImageListFromFirstImage(first_img)
+        all_img_list = imsup.CreateImageListFromFirstImage(first_img)
 
-        if curr_img.prev is not None:
-            curr_img.prev.next = None
-            self.go_to_prev_image()
-        else:
-            curr_img.next.prev = None
-            self.go_to_next_image()
-            if curr_idx == 0:
-                self.display.image.numInSeries = 1
+        new_idx = curr_idx - 1 if curr_img.prev is not None else curr_idx + 1
+        self.go_to_image(new_idx)
 
-        del tmp_img_list[curr_idx]
+        del all_img_list[curr_idx]
         del self.display.pointSets[curr_idx]
-        tmp_img_list.UpdateLinks()
-        del curr_img
 
     def toggle_lines(self):
         self.display.show_lines = not self.display.show_lines
@@ -1237,13 +1223,8 @@ class TriangulateWidget(QtWidgets.QWidget):
         img_list.UpdateLinks()
 
         if self.clear_prev_checkbox.isChecked():
-            # if img_list[curr_idx].prev is not None:
-            #     img_list[curr_idx].prev.next = img_list[insert_idx]
-            # img_list[insert_idx].prev = img_list[curr_idx].prev
-            # del img_list[curr_idx:insert_idx]
-            delete_n_prev_images(img_list, curr_idx, insert_idx)
+            del img_list[curr_idx:insert_idx]
             del self.display.pointSets[curr_idx:insert_idx]
-            # img_list.UpdateLinks()
 
         self.go_to_image(curr_idx)
         print('Zooming complete!')
@@ -1823,6 +1804,7 @@ def LoadImageSeriesFromFirstFile(imgPath):
                              num=imgNum, px_dim_sz=pxDims[0])
         # img.LoadAmpData(np.sqrt(imgData).astype(np.float32))
         img.LoadAmpData(imgData.astype(np.float32))
+        # img.name = ...
         # img.amPh.ph = np.copy(img.amPh.am)
         # ---
         # imsup.RemovePixelArtifacts(img, const.minPxThreshold, const.maxPxThreshold)
@@ -1838,7 +1820,7 @@ def LoadImageSeriesFromFirstFile(imgPath):
         imgPath = RReplace(imgPath, imgNumText, imgNumTextNew, 1)
         imgNumText = imgNumTextNew
 
-    imgList.UpdateLinks()
+    imgList.UpdateAndRestrainLinks()
     return imgList[0]
 
 # --------------------------------------------------------

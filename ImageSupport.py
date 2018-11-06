@@ -270,11 +270,21 @@ class ImageList(list):
         super(ImageList, self).__init__(imgList)
         self.UpdateLinks()
 
+    def __delitem__(self, item):
+        super(ImageList, self).__delitem__(item)
+        self.UpdateAndRestrainLinks()
+
     def UpdateLinks(self):
         for imgPrev, imgNext in zip(self[:-1], self[1:]):
             imgPrev.next = imgNext
             imgNext.prev = imgPrev
             imgNext.numInSeries = imgPrev.numInSeries + 1
+
+    def UpdateAndRestrainLinks(self):
+        self[0].prev = None
+        self[0].numInSeries = 1
+        self[len(self)-1].next = None
+        self.UpdateLinks()
 
 #-------------------------------------------------------------------
 
