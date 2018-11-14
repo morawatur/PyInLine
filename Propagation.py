@@ -228,10 +228,23 @@ def run_backprop_iter(imgs_to_ewr, use_aberrs=False, ap=const.aperture, hann=con
 def run_forwprop_iter(exit_wave, imgs_to_ewr, use_aberrs=False, ap=const.aperture, hann=const.hann_win):
     n_imgs = len(imgs_to_ewr)
 
+    tot_error = 0.0
     for img, idx in zip(imgs_to_ewr, range(0, n_imgs)):
         imgs_to_ewr[idx] = PropagateBackToDefocus(exit_wave, img.defocus, use_other_aberrs=use_aberrs, aper=ap, hann_width=hann)
         img.MoveToCPU()
+        tot_error += calc_sum_squared_error(img.amPh.am, imgs_to_ewr[idx].amPh.am)     # !!!
         imgs_to_ewr[idx].amPh.am = np.copy(img.amPh.am)  # restore original amplitude
+
+    tot_error /= n_imgs
+    print('Total error = {0:.2f}%'.format(tot_error * 100))
+
+# -------------------------------------------------------------------
+
+def calc_sum_squared_error(arr_ref, arr):
+    denom = np.sum(arr_ref)
+    errors = np.power(np.sqrt(arr_ref) - np.sqrt(arr), 2)
+    sse = np.sum(errors) / denom
+    return sse
 
 # -------------------------------------------------------------------
 

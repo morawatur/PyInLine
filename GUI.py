@@ -117,7 +117,7 @@ class LabelExt(QtWidgets.QLabel):
         for i in range(self.n_imgs):
             self.pointSets.append([])
         # self.pointSets = [[]] * n_imgs
-        self.frag_coords = [0]
+        self.frag_coords = []
         self.show_lines = True
         self.show_labs = True
         self.show_grid = True
@@ -173,7 +173,7 @@ class LabelExt(QtWidgets.QLabel):
             qp.setPen(linePen)
             qp.drawRect(square)
 
-        if self.frag_coords[0] > 0:
+        if len(self.frag_coords) > 0:
             qp.setPen(QtCore.Qt.NoPen)
             qp.setBrush(QtGui.QColor(240, 240, 240, 100))
             grid_dim = self.frag_coords[0]
@@ -1225,6 +1225,7 @@ class TriangulateWidget(QtWidgets.QWidget):
         if self.clear_prev_checkbox.isChecked():
             del img_list[curr_idx:insert_idx]
             del self.display.pointSets[curr_idx:insert_idx]
+            self.display.image = img_list[curr_idx]       # !!!
 
         self.go_to_image(curr_idx)
         print('Zooming complete!')
@@ -1334,6 +1335,8 @@ class TriangulateWidget(QtWidgets.QWidget):
         img_list_to_cc = imsup.CreateImageListFromImage(curr_img.prev, 2)
         img_aligned = self.cross_corr_core(img_list_to_cc)[0]
         self.insert_img_after_curr(img_aligned)
+        self.display.frag_coords = []
+        self.btn_grid.create_grid()
         self.go_to_next_image()
 
     def cross_corr_n_images(self):
@@ -1344,29 +1347,26 @@ class TriangulateWidget(QtWidgets.QWidget):
         first_img = imsup.GetFirstImage(curr_img)
         all_img_list = imsup.CreateImageListFromFirstImage(first_img)
         n_imgs = len(all_img_list)
-        # n_point_sets = len(self.display.pointSets)
-        # n_diff = n_imgs - n_point_sets
-        # self.display.pointSets.append([] * n_diff)
         if insert_idx > n_imgs:
             n_to_cc = n_imgs - curr_idx
-        img_list_to_cc = imsup.CreateImageListFromImage(curr_img, n_to_cc)
+            insert_idx = curr_idx + n_to_cc
+        img_list_to_cc = all_img_list[curr_idx:insert_idx]
         img_align_list = self.cross_corr_core(img_list_to_cc)
 
-        ref_img = imsup.copy_am_ph_image(curr_img)
-        self.insert_img_last(ref_img)
-        for img in img_align_list:
-            self.insert_img_last(img)
+        for img, n in zip(img_align_list, range(insert_idx, insert_idx + n_to_cc)):
+            all_img_list.insert(n, img)
+            self.display.pointSets.insert(n, [])
 
-        self.go_to_last_image()
+        all_img_list.UpdateLinks()
 
-        # przetestowac to
         if self.clear_prev_checkbox.isChecked():
-            print(len(all_img_list))
-            all_img_list = imsup.CreateImageListFromFirstImage(imsup.GetFirstImage(curr_img))
-            print(len(all_img_list))
-            delete_n_prev_images(all_img_list, curr_idx, insert_idx)
+            del all_img_list[curr_idx:insert_idx]
             del self.display.pointSets[curr_idx:insert_idx]
+            self.display.image = all_img_list[curr_idx]     # !!!
 
+        self.display.frag_coords = []
+        self.btn_grid.create_grid()
+        self.go_to_image(curr_idx)
         print('Cross-correlation done!')
 
     def cross_corr_core(self, img_list_to_cc):
@@ -1679,8 +1679,9 @@ class TriangulateWidget(QtWidgets.QWidget):
                     cc.DetermineAbsoluteDefocus(self.curr_ewr_imgs, idx_in_focus)
             # ---- (only 1st iteration) ----
 
-            for img in self.curr_ewr_imgs:
-                print('{0:.1f} nm'.format(img.defocus * 1e9))
+            if it == 0:
+                for img in self.curr_ewr_imgs:
+                    print('{0:.1f} nm'.format(img.defocus * 1e9))
 
             self.curr_exit_wave = prop.run_backprop_iter(self.curr_ewr_imgs,
                                                          self.use_aberrs_checkbox.isChecked(),
@@ -1837,6 +1838,7 @@ def delete_n_prev_images(imgs, idx1, idx2):      # like del imgs[idx1:idx2]
 def cross_corr_images(img_list, n_div, frag_coords, df_min=0.0, df_max=-1.0, df_step=1.0):
     img_align_list = imsup.ImageList()
     img_list[0].shift = [0, 0]
+    img_align_list.append(img_list[0])
     if df_max < 0.0:
         df_max = df_min + 1.0
         df_step = 2.0
@@ -1863,8 +1865,8 @@ def zoom_fragment(img, coords):
     crop_width = np.abs(coords[2] - coords[0])
     zoom_factor = orig_width / crop_width
     zoom_img = tr.RescaleImageSki(crop_img, zoom_factor)
-    zoom_img.px_dim *= zoom_factor
     zoom_img.defocus = img.defocus
+    # zoom_img.px_dim *= zoom_factor
     # self.insert_img_after_curr(zoom_img)
     return zoom_img
 
