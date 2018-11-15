@@ -236,7 +236,8 @@ def run_forwprop_iter(exit_wave, imgs_to_ewr, use_aberrs=False, ap=const.apertur
         imgs_to_ewr[idx].amPh.am = np.copy(img.amPh.am)  # restore original amplitude
 
     tot_error /= n_imgs
-    print('Total error = {0:.2f}%'.format(tot_error * 100))
+    # print('Total error = {0:.2f}%'.format(tot_error * 100))
+    return tot_error
 
 # -------------------------------------------------------------------
 
@@ -297,6 +298,26 @@ def run_iwfr(imgs_to_iwfr, n_iters):
 
     print('All done')
     return exit_wave
+
+# -------------------------------------------------------------------
+
+def simulate_images(exit_wave, df1, df2=None, df3=None, A1_amp=0.0, A1_phs=0.0, aper=const.aperture):
+    if df2 is None or df3 is None:
+        df2 = df1 + 1
+        df3 = 2
+
+    sim_imgs = imsup.ImageList()
+
+    const.A1_amp = A1_amp       # !!!
+    const.A1_phs = A1_phs       # !!!
+    hann_win = 2.2 * aper
+
+    for df in cc.frange(df1, df2, df3):
+        img = PropagateBackToDefocus(exit_wave, df, True, aper, hann_win)
+        img.defocus = df
+        sim_imgs.append(img)
+
+    return sim_imgs
 
 # -------------------------------------------------------------------
 

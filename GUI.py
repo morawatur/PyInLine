@@ -372,10 +372,13 @@ class TriangulateWidget(QtWidgets.QWidget):
         self.curr_exit_wave = None      # !!!
         self.curr_ewr_imgs = None       # !!!
         self.curr_ddfs = [0]            # !!!
+        self.last_tot_error = 0.0       # !!!
         self.initUI()
 
     def initUI(self):
         self.plot_widget.canvas.setFixedHeight(350)
+
+        self.curr_img_name_label = QtWidgets.QLabel(self.display.image.name, self)
 
         # ------------------------------
         # Navigation panel (1)
@@ -764,15 +767,19 @@ class TriangulateWidget(QtWidgets.QWidget):
 
         sim_button = QtWidgets.QPushButton('Simulate', self)
 
-        df_sim_label = QtWidgets.QLabel('Defocus [nm]', self)
+        df_sim_1_label = QtWidgets.QLabel('Start defocus [nm]', self)
+        df_sim_2_label = QtWidgets.QLabel('Stop defocus [nm]', self)
+        df_sim_3_label = QtWidgets.QLabel('Step [nm]', self)
         A1_sim_label = QtWidgets.QLabel('A1 [nm]', self)
         phi1_sim_label = QtWidgets.QLabel('A1 angle [deg]', self)
 
-        self.df_sim_input = QtWidgets.QLineEdit('0', self)
+        self.df_sim_1_input = QtWidgets.QLineEdit('0', self)
+        self.df_sim_2_input = QtWidgets.QLineEdit('0', self)
+        self.df_sim_3_input = QtWidgets.QLineEdit('0', self)
         self.A1_sim_input = QtWidgets.QLineEdit('0', self)
         self.phi1_sim_input = QtWidgets.QLineEdit('0', self)
 
-        sim_button.clicked.connect(self.simulate_image_for_df)
+        sim_button.clicked.connect(self.simulate_images_for_df)
 
         self.tab_sim = QtWidgets.QWidget()
         self.tab_sim.layout = QtWidgets.QGridLayout()
@@ -781,15 +788,20 @@ class TriangulateWidget(QtWidgets.QWidget):
         self.tab_sim.layout.setColumnStretch(2, 1)
         self.tab_sim.layout.setColumnStretch(3, 1)
         self.tab_sim.layout.setColumnStretch(4, 1)
+        self.tab_sim.layout.setColumnStretch(5, 1)
         self.tab_sim.layout.setRowStretch(0, 1)
-        self.tab_sim.layout.setRowStretch(4, 1)
-        self.tab_sim.layout.addWidget(sim_button, 1, 1)
-        self.tab_sim.layout.addWidget(df_sim_label, 1, 2)
-        self.tab_sim.layout.addWidget(self.df_sim_input, 1, 3)
-        self.tab_sim.layout.addWidget(A1_sim_label, 2, 2)
-        self.tab_sim.layout.addWidget(self.A1_sim_input, 2, 3)
-        self.tab_sim.layout.addWidget(phi1_sim_label, 3, 2)
-        self.tab_sim.layout.addWidget(self.phi1_sim_input, 3, 3)
+        self.tab_sim.layout.setRowStretch(6, 1)
+        self.tab_sim.layout.addWidget(df_sim_1_label, 1, 2)
+        self.tab_sim.layout.addWidget(df_sim_2_label, 1, 3)
+        self.tab_sim.layout.addWidget(df_sim_3_label, 1, 4)
+        self.tab_sim.layout.addWidget(sim_button, 2, 1)
+        self.tab_sim.layout.addWidget(self.df_sim_1_input, 2, 2)
+        self.tab_sim.layout.addWidget(self.df_sim_2_input, 2, 3)
+        self.tab_sim.layout.addWidget(self.df_sim_3_input, 2, 4)
+        self.tab_sim.layout.addWidget(A1_sim_label, 4, 2)
+        self.tab_sim.layout.addWidget(self.A1_sim_input, 4, 3)
+        self.tab_sim.layout.addWidget(phi1_sim_label, 5, 2)
+        self.tab_sim.layout.addWidget(self.phi1_sim_input, 5, 3)
         self.tab_sim.setLayout(self.tab_sim.layout)
 
         # ------------------------------
@@ -875,6 +887,7 @@ class TriangulateWidget(QtWidgets.QWidget):
         self.tabs.addTab(self.tab_corr, 'Corrections')
 
         vbox_panel = QtWidgets.QVBoxLayout()
+        vbox_panel.addWidget(self.curr_img_name_label)
         vbox_panel.addWidget(self.tabs)
         vbox_panel.addWidget(self.plot_widget)
 
@@ -883,8 +896,7 @@ class TriangulateWidget(QtWidgets.QWidget):
         hbox_main.addLayout(vbox_panel)
 
         self.setLayout(hbox_main)
-
-        self.reset_image_names()  # !!!
+        # self.reset_image_names()
 
         self.move(250, 50)
         self.setWindowTitle('Holo window')
@@ -955,6 +967,7 @@ class TriangulateWidget(QtWidgets.QWidget):
         curr_img = imgs[new_idx]
         if curr_img.name == '':
             curr_img.name = 'img0{0}'.format(new_idx + 1) if new_idx < 9 else 'img{0}'.format(new_idx + 1)
+        self.curr_img_name_label.setText(curr_img.name)
         self.name_input.setText(curr_img.name)
         self.fname_input.setText(curr_img.name)
         self.manual_mode_checkbox.setChecked(False)
@@ -1689,10 +1702,16 @@ class TriangulateWidget(QtWidgets.QWidget):
                                                          hann=int(self.hann_win_input.text()))
 
             print('Forward propagation...')
-            prop.run_forwprop_iter(self.curr_exit_wave, self.curr_ewr_imgs,
-                                   self.use_aberrs_checkbox.isChecked(),
-                                   ap=int(self.aperture_input.text()),
-                                   hann=int(self.hann_win_input.text()))
+            tot_error = prop.run_forwprop_iter(self.curr_exit_wave, self.curr_ewr_imgs,
+                                               self.use_aberrs_checkbox.isChecked(),
+                                               ap=int(self.aperture_input.text()),
+                                               hann=int(self.hann_win_input.text()))
+
+            delta_tot_error = tot_error - self.last_tot_error
+            self.last_tot_error = tot_error
+            # wychodzi b. duzy total error, przesledzic skad sie to bierze
+            print('Total error = {0:.2f}%'.format(tot_error * 100))
+            print('Delta error = {0:.2f}%'.format(delta_tot_error * 100))
 
         ccfg.GetGPUMemoryUsed()
         exit_wave_copy = imsup.CopyImage(self.curr_exit_wave)
@@ -1714,6 +1733,7 @@ class TriangulateWidget(QtWidgets.QWidget):
             img.defocus = ddf
         self.curr_iter = 0
         self.curr_exit_wave = None
+        self.last_tot_error = 0.0
         # self.curr_ewr_imgs = None
         print('EWR procedure was reset')
 
@@ -1778,15 +1798,25 @@ class TriangulateWidget(QtWidgets.QWidget):
 
         self.plot_widget.plot(dists, int_profile, 'Distance [nm]', 'Intensity [a.u.]')
 
-    def simulate_image_for_df(self):
+    def simulate_images_for_df(self):
         curr_img = self.display.image
-        defocus = float(self.df_sim_input.text()) * 1e-9
+        df1 = float(self.df_sim_1_input.text()) * 1e-9
+        df2 = float(self.df_sim_2_input.text()) * 1e-9
+        df3 = float(self.df_sim_3_input.text()) * 1e-9
         A1 = float(self.A1_sim_input.text()) * 1e-9
-        phi1 = float(self.phi1_sim_input.text()) * 1e-9
-        const.A1_amp = A1
-        const.A1_phs = phi1
-        sim_img = prop.PropagateBackToDefocus(curr_img, defocus, True)
-        self.insert_img_after_curr(sim_img)
+        phi1 = float(self.phi1_sim_input.text())
+        aper = int(self.aperture_input.text())
+
+        print('df1 = {0:.0f} nm\ndf2 = {1:.0f} nm\ndf3 = {2:.0f} nm'.format(df1 * 1e9, df2 * 1e9, df3 * 1e9))
+        print('A1 amp = {0:.0f} nm\nA1 ang = {1:.0f} deg\nAperture = {2:.0f} px'.format(A1 * 1e9, phi1, aper))
+
+        # const.A1_amp = A1
+        # const.A1_phs = phi1
+
+        sim_imgs = prop.simulate_images(curr_img, df1, df2, df3, A1, phi1, aper)
+        for img in sim_imgs:
+            img.name += '_{0:.0f}nm'.format(img.defocus * 1e9)
+            self.insert_img_after_curr(img)
 
 # --------------------------------------------------------
 
@@ -1798,6 +1828,9 @@ def LoadImageSeriesFromFirstFile(imgPath):
 
     while path.isfile(imgPath):
         print('Reading file "' + imgPath + '"')
+        img_name_match = re.search('(.+)/(.+).dm3$', imgPath)
+        img_name_text = img_name_match.group(2)
+
         imgData, pxDims = dm3.ReadDm3File(imgPath)
         imsup.Image.px_dim_default = pxDims[0]
         imgData = np.abs(imgData)
@@ -1805,7 +1838,7 @@ def LoadImageSeriesFromFirstFile(imgPath):
                              num=imgNum, px_dim_sz=pxDims[0])
         # img.LoadAmpData(np.sqrt(imgData).astype(np.float32))
         img.LoadAmpData(imgData.astype(np.float32))
-        # img.name = ...
+        img.name = img_name_text
         # img.amPh.ph = np.copy(img.amPh.am)
         # ---
         # imsup.RemovePixelArtifacts(img, const.minPxThreshold, const.maxPxThreshold)
