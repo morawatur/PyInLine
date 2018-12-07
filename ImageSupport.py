@@ -198,43 +198,48 @@ class ImageExp(Image):
         self.shift = [0, 0]
         self.rot = 0
         self.cos_phase = None
-        if self.memType == self.mem['CPU']:
-            self.buffer = np.zeros(self.amPh.am.shape, dtype=np.float32)
-        else:
-            self.buffer = cuda.to_device(np.zeros(self.amPh.am.shape, dtype=np.float32))
+        self.buffer = ComplexAmPhMatrix(height, width, memType)
 
     def __del__(self):
         super(ImageExp, self).__del__()
         # del self.buffer
-        self.buffer = None
+        self.buffer.am = None
+        self.buffer.ph = None
         self.cos_phase = None
         # cuda.current_context().deallocations.clear()
 
     def LoadAmpData(self, ampData):
         self.amPh.am = np.copy(ampData)
-        self.buffer = np.copy(ampData)
+        self.buffer.am = np.copy(ampData)
 
     def LoadPhsData(self, phsData):
         self.amPh.ph = np.copy(phsData)
+        self.buffer.ph = np.copy(phsData)
 
     def UpdateBuffer(self):
         if self.memType == self.mem['CPU']:
-            self.buffer = np.copy(self.amPh.am)
+            self.buffer.am = np.copy(self.amPh.am)
+            self.buffer.ph = np.copy(self.amPh.ph)
         else:
-            self.buffer.copy_to_device(self.amPh.am)
+            self.buffer.am.copy_to_device(self.amPh.am)
+            self.buffer.ph.copy_to_device(self.amPh.ph)
 
     def UpdateImageFromBuffer(self):
         if self.memType == self.mem['CPU']:
-            self.amPh.am = np.copy(self.buffer)
+            self.amPh.am = np.copy(self.buffer.am)
+            self.amPh.ph = np.copy(self.buffer.ph)
         else:
-            self.amPh.am = cuda.device_array(self.buffer.shape, dtype=np.float32)
-            self.amPh.am.copy_to_device(self.buffer)
+            self.amPh.am = cuda.device_array(self.buffer.am.shape, dtype=np.float32)
+            self.amPh.ph = cuda.device_array(self.buffer.ph.shape, dtype=np.float32)
+            self.amPh.am.copy_to_device(self.buffer.am)
+            self.amPh.ph.copy_to_device(self.buffer.ph)
 
     def MoveToGPU(self):
         if self.memType == self.mem['GPU']:
             return
         super(ImageExp, self).MoveToGPU()
-        self.buffer = cuda.to_device(self.buffer)
+        self.buffer.am = cuda.to_device(self.buffer.am)
+        self.buffer.ph = cuda.to_device(self.buffer.ph)
         if self.cos_phase is not None:
             self.cos_phase = cuda.to_device(self.cos_phase)
 
@@ -242,10 +247,13 @@ class ImageExp(Image):
         if self.memType == self.mem['CPU']:
             return
         super(ImageExp, self).MoveToCPU()
-        buf = self.buffer.copy_to_host()
-        self.buffer = None
+        buf_am = self.buffer.am.copy_to_host()
+        buf_ph = self.buffer.ph.copy_to_host()
+        self.buffer.am = None
+        self.buffer.ph = None
         # cuda.current_context().deallocations.clear()
-        self.buffer = np.copy(buf)
+        self.buffer.am = np.copy(buf_am)
+        self.buffer.ph = np.copy(buf_ph)
         if self.cos_phase is not None:
             cos_phs = self.cos_phase.copy_to_host()
             self.cos_phase = None
@@ -822,7 +830,7 @@ def CopyImage(img):
     img.AmPh2ReIm()
     img.MoveToCPU()
 
-    imgCopy = ImageExp(img.height, img.width, cmpRepr=img.cmpRepr, memType=img.memType, defocus=img.defocus, num=img.numInSeries)
+    imgCopy = ImageExp(img.height, img.width, cmpRepr=img.cmpRepr, memType=img.memType, defocus=img.defocus, num=img.numInSeries, px_dim_sz=img.px_dim)
     imgCopy.reIm = np.copy(img.reIm)
 
     if img.prev is not None:

@@ -67,8 +67,7 @@ def calc_ctf(img_dim, px_dim, defocus, Cs=const.Cs, A1=ab.PolarComplex(const.A1_
     A1_im_coeff = A1_dir * 2 * np.pi * const.ewfLambda * A1.imag()
 
     block_dim, grid_dim = ccfg.DetermineCudaConfig(img_dim)
-    ctf = imsup.Image(img_dim, img_dim, imsup.Image.cmp['CAP'], imsup.Image.mem['GPU'])
-
+    ctf = imsup.ImageExp(img_dim, img_dim, imsup.Image.cmp['CAP'], imsup.Image.mem['GPU'])
     calc_ctf_dev[grid_dim, block_dim](ctf.amPh.am, ctf.amPh.ph, img_dim, px_dim, defocus, df_coeff, Cs_coeff, A1_re_coeff,
                                       A1_im_coeff, Cs_spat_coeff, conv_ang_coeff, df_spread_coeff)
     ctf.defocus = defocus
@@ -158,7 +157,7 @@ def PropagateWave(img, ctf):
     ctf.MoveToGPU()
     ctf.ReIm2AmPh()
 
-    fftProp = imsup.Image(img.height, img.width, imsup.Image.cmp['CAP'], imsup.Image.mem['GPU'])
+    fftProp = imsup.ImageExp(img.height, img.width, imsup.Image.cmp['CAP'], imsup.Image.mem['GPU'])
     fftProp.amPh = imsup.MultAmPhMatrices(fft.amPh, ctf.amPh)
 
     imgProp = cc.IFFT(fftProp)
@@ -189,6 +188,15 @@ def PropagateToFocus(img, use_other_aberrs=True, aper=const.aperture, hann_width
         ctf2 = calc_ctf(img.width, img.px_dim, -img.defocus, Cs=0, A1=ab.PolarComplex(0, 0),
                         df_spread=0, conv_angle=0, aperture=0, A1_dir=-1)
 
+    # proba uzycia FFT obrazu jako fazy funkcji przenoszenia kontrastu
+    # fft = cc.FFT(img)
+    # fft.ReIm2AmPh()
+    # fft.MoveToCPU()
+    # fft = cc.fft2diff_cpu(fft)
+    # ctf2 = imsup.ImageExp(img.height, img.width, fft.cmpRepr, fft.memType)
+    # ctf2.amPh.am = np.copy(np.ones(ctf2.amPh.am.shape, dtype=np.float32))
+    # ctf2.amPh.ph = np.copy(-fft.amPh.am)
+
     return PropagateWave(img, ctf2)
 
 # -------------------------------------------------------------------
@@ -211,7 +219,7 @@ def PropagateBackToDefocus(img, defocus, use_other_aberrs=True, aper=const.apert
 def run_backprop_iter(imgs_to_ewr, use_aberrs=False, ap=const.aperture, hann=const.hann_win):
     n_imgs = len(imgs_to_ewr)
     img_w, img_h = imgs_to_ewr[0].width, imgs_to_ewr[0].height
-    exit_wave = imsup.ImageExp(img_h, img_w, imsup.Image.cmp['CRI'], imsup.Image.mem['GPU'])
+    exit_wave = imsup.ImageExp(img_h, img_w, imsup.Image.cmp['CRI'], imsup.Image.mem['GPU'], px_dim_sz=imgs_to_ewr[0].px_dim)
 
     for img, idx in zip(imgs_to_ewr, range(0, n_imgs)):
         img.MoveToGPU()
@@ -301,7 +309,7 @@ def run_iwfr(imgs_to_iwfr, n_iters):
 
 # -------------------------------------------------------------------
 
-def simulate_images(exit_wave, df1, df2=None, df3=None, A1_amp=0.0, A1_phs=0.0, aper=const.aperture):
+def simulate_images(exit_wave, df1, df2=None, df3=None, use_aberrs=True, A1_amp=0.0, A1_phs=0.0, aper=const.aperture):
     if df2 is None or df3 is None:
         df2 = df1 + 1
         df3 = 2
@@ -313,7 +321,8 @@ def simulate_images(exit_wave, df1, df2=None, df3=None, A1_amp=0.0, A1_phs=0.0, 
     hann_win = 2.2 * aper
 
     for df in cc.frange(df1, df2, df3):
-        img = PropagateBackToDefocus(exit_wave, df, True, aper, hann_win)
+        img = PropagateBackToDefocus(exit_wave, df, use_aberrs, aper, hann_win)
+        img.MoveToCPU()
         img.defocus = df
         sim_imgs.append(img)
 

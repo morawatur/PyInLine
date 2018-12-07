@@ -12,10 +12,8 @@ def rescale_pixel_dim(px_dim, old_dim, new_dim):
 #-------------------------------------------------------------------
 
 def RotateImageSki(img, angle, mode='constant'):
-    mt = img.memType
     dt = img.cmpRepr
     img.ReIm2AmPh()
-    img.MoveToCPU()
 
     amp_limits = [np.min(img.amPh.am), np.max(img.amPh.am)]
     phs_limits = [np.min(img.amPh.ph), np.max(img.amPh.ph)]
@@ -53,9 +51,7 @@ def RotateImageSki(img, angle, mode='constant'):
     # img_rot.px_dim *= resc_factor
     img_rot.px_dim = rescale_pixel_dim(img.px_dim, img.width, img_rot.width)
 
-    img.ChangeMemoryType(mt)
     img.ChangeComplexRepr(dt)
-    img_rot.ChangeMemoryType(mt)
     img_rot.ChangeComplexRepr(dt)
 
     return img_rot
@@ -63,10 +59,8 @@ def RotateImageSki(img, angle, mode='constant'):
 #-------------------------------------------------------------------
 
 def RescaleImageSki(img, factor):
-    mt = img.memType
     dt = img.cmpRepr
     img.ReIm2AmPh()
-    img.MoveToCPU()
 
     amp_limits = [np.min(img.amPh.am), np.max(img.amPh.am)]
     phs_limits = [np.min(img.amPh.ph), np.max(img.amPh.ph)]
@@ -102,13 +96,9 @@ def RescaleImageSki(img, factor):
 
     # resc_factor = img_mag.width / img.width
     # img_mag.px_dim *= resc_factor
-    print(img.px_dim)
     img_mag.px_dim = rescale_pixel_dim(img.px_dim, img.width, img_mag.width)
-    print(img_mag.px_dim)
 
-    img.ChangeMemoryType(mt)
     img.ChangeComplexRepr(dt)
-    img_mag.ChangeMemoryType(mt)
     img_mag.ChangeComplexRepr(dt)
 
     return img_mag
@@ -116,10 +106,8 @@ def RescaleImageSki(img, factor):
 #-------------------------------------------------------------------
 
 def WarpImage(img, src_set, dst_set):
-    mt = img.memType
     dt = img.cmpRepr
     img.ReIm2AmPh()
-    img.MoveToCPU()
 
     amp_limits = [np.min(img.amPh.am), np.max(img.amPh.am)]
     phs_limits = [np.min(img.amPh.ph), np.max(img.amPh.ph)]
@@ -155,60 +143,15 @@ def WarpImage(img, src_set, dst_set):
     if img.cos_phase is not None:
         img_warp.update_cos_phase()
 
-    img.ChangeMemoryType(mt)
     img.ChangeComplexRepr(dt)
-    img_warp.ChangeMemoryType(mt)
     img_warp.ChangeComplexRepr(dt)
 
     return img_warp
 
 #-------------------------------------------------------------------
 
-# deprecated function
-def RotateAndMagnifyWrapper(img, todo='mr', factor=1.0, angle=0.0):
-    mt = img.memType
-    dt = img.cmpRepr
-    img.ReIm2AmPh()
-    img.MoveToCPU()
-
-    limits = [np.min(img.amPh.am), np.max(img.amPh.am)]
-    ampMod = np.copy(imsup.ScaleImage(img.amPh.am, -1.0, 1.0))
-    ampMod[ampMod == -1] = 0.0
-
-    if 'r' in todo:
-        ampMod = tr.rotate(ampMod, angle=angle).astype(np.float32)
-    if 'm' in todo:
-        ampMod = tr.rescale(ampMod, scale=factor).astype(np.float32)
-
-    ampModRescaled = imsup.ScaleImage(ampMod, limits[0], limits[1])
-    imgMod = imsup.ImageExp(ampMod.shape[0], ampMod.shape[1], defocus=img.defocus, num=img.numInSeries)
-    imgMod.LoadAmpData(ampModRescaled)
-
-    img.ChangeMemoryType(mt)
-    img.ChangeComplexRepr(dt)
-    imgMod.ChangeMemoryType(mt)
-    imgMod.ChangeComplexRepr(dt)
-
-    return imgMod
-
-#-------------------------------------------------------------------
-
 def DetermineCropCoordsAfterSkiRotation(oldDim, angle):
     return imsup.DetermineCropCoordsAfterRotation(oldDim, oldDim, angle)
-
-#-------------------------------------------------------------------
-
-def RotateImageSki2(img, angle, cut=False):
-    imgRot = RotateAndMagnifyWrapper(img, 'r', angle=angle)
-    if cut:
-        cropCoords = DetermineCropCoordsAfterSkiRotation(img.width, angle)
-        imgRot = imsup.CropImageROICoords(imgRot, cropCoords)
-    return imgRot
-
-#-------------------------------------------------------------------
-
-def RescaleImageSki2(img, factor):
-    return RotateAndMagnifyWrapper(img, 'm', factor=factor)
 
 #-------------------------------------------------------------------
 
@@ -233,10 +176,6 @@ def FindPerpendicularLine(line, point):
     return linePerp
 
 #-------------------------------------------------------------------
-
-# def FindRotationCenter(tr1, tr2):
-    # A1, B1 = tr1[1:3]
-    # A2, B2 = tr2[1:3]
 
 def FindRotationCenter(pts1, pts2):
     A1, B1 = pts1
@@ -266,9 +205,3 @@ def RotatePoint(p1, angle):
     phi = np.angle(z1) + imsup.Radians(angle)
     p2 = [r * np.cos(phi), r * np.sin(phi)]
     return p2
-
-#-------------------------------------------------------------------
-
-# def unwrap_phs(phs_wrapped):
-#     phs_unwrapped = unwrap_phase(phs_wrapped)
-#     return phs_unwrapped
