@@ -595,6 +595,7 @@ class TriangulateWidget(QtWidgets.QWidget):
         cross_corr_n_images_button = QtWidgets.QPushButton('Cross-corr. N images', self)
         shift_button = QtWidgets.QPushButton('Shift', self)
         warp_button = QtWidgets.QPushButton('Warp', self)
+        set_df_button = QtWidgets.QPushButton('Set df', self)
 
         self.df_min_label = QtWidgets.QLabel('df min [nm]', self)
         df_max_label = QtWidgets.QLabel('df max [nm]', self)
@@ -615,6 +616,7 @@ class TriangulateWidget(QtWidgets.QWidget):
         cross_corr_n_images_button.clicked.connect(self.cross_corr_n_images)
         shift_button.clicked.connect(self.align_shift)
         warp_button.clicked.connect(partial(self.warp_image, False))
+        set_df_button.clicked.connect(self.set_defocus)
 
         self.df_min_label.setAlignment(QtCore.Qt.AlignCenter)
         df_max_label.setAlignment(QtCore.Qt.AlignCenter)
@@ -657,7 +659,7 @@ class TriangulateWidget(QtWidgets.QWidget):
         grid_auto.setColumnStretch(6, 1)
         grid_auto.setColumnStretch(7, 1)
         grid_auto.setRowStretch(0, 1)
-        grid_auto.setRowStretch(5, 1)
+        grid_auto.setRowStretch(6, 1)
         grid_auto.addLayout(self.btn_grid, 1, 1, 4, 1)
         grid_auto.addWidget(mesh_up_button, 1, 2)
         grid_auto.addWidget(mesh_down_button, 2, 2)
@@ -673,6 +675,7 @@ class TriangulateWidget(QtWidgets.QWidget):
         grid_auto.addWidget(self.df_min_input, 2, 6)
         grid_auto.addWidget(self.df_max_input, 3, 6)
         grid_auto.addWidget(self.df_step_input, 4, 6)
+        grid_auto.addWidget(set_df_button, 5, 6)
 
         self.tab_align = QtWidgets.QWidget()
         self.tab_align.layout = QtWidgets.QVBoxLayout()
@@ -965,6 +968,9 @@ class TriangulateWidget(QtWidgets.QWidget):
             img.name = 'img0{0}'.format(idx+1) if idx < 9 else 'img{0}'.format(idx+1)
         self.name_input.setText(curr_img.name)
         self.fname_input.setText(curr_img.name)
+
+    def set_defocus(self):
+        self.display.image.defocus = float(self.df_min_input.text()) * 1e-9
 
     def go_to_image(self, new_idx):
         is_show_labels_checked = self.show_labels_checkbox.isChecked()
@@ -1734,10 +1740,12 @@ class TriangulateWidget(QtWidgets.QWidget):
     def reset_ewr(self):
         tmp_ddfs = [0]
         for img1, img2 in zip(self.curr_ewr_imgs[:-1], self.curr_ewr_imgs[1:]):
-             tmp_ddfs.append(img1.defocus - img2.defocus)
+            tmp_ddfs.append(img1.defocus - img2.defocus)
+        start_idx = int(self.start_num_input.text()) - 1
+        end_idx = start_idx + int(self.n_to_ewr_input.text())
         first_img = imsup.GetFirstImage(self.display.image)
         new_img_list = imsup.CreateImageListFromFirstImage(first_img)
-        for img, ddf in zip(new_img_list, tmp_ddfs):
+        for img, ddf in zip(new_img_list[start_idx:end_idx], tmp_ddfs):
             img.defocus = ddf
         self.curr_iter = 0
         self.curr_exit_wave = None
@@ -1826,6 +1834,7 @@ class TriangulateWidget(QtWidgets.QWidget):
         for img in sim_imgs:
             img.name += '_{0:.0f}nm'.format(img.defocus * 1e9)
             self.insert_img_after_curr(img)
+            print('{0} added'.format(img.name))
 
 # --------------------------------------------------------
 

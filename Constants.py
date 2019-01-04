@@ -30,6 +30,6 @@ dirac_const = 6.582119514e-16      # eV * s
 
 A1_amp = 0.0
 A1_phs = 0.0
-Cs = 0.0
-df_spread = 0.0
+Cs = 0.6e-3
+df_spread = 10.0e-9
 conv_angle = 0.0
