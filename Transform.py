@@ -102,9 +102,7 @@ def RescaleImageSki(img, factor):
 
     # resc_factor = img_mag.width / img.width
     # img_mag.px_dim *= resc_factor
-    print(img.px_dim)
     img_mag.px_dim = rescale_pixel_dim(img.px_dim, img.width, img_mag.width)
-    print(img_mag.px_dim)
 
     img.ChangeMemoryType(mt)
     img.ChangeComplexRepr(dt)

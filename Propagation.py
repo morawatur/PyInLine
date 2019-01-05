@@ -357,7 +357,6 @@ def FilterAmplitude(img, stdFactor=1.0):
     amMax = amAvg + stdFactor * amStd
     amTemp2 = amTemp * (amTemp < amMax) + amMax * (amTemp > amMax)
     amplifAmpImg.amPh.am = amTemp2 * (amTemp2 > amMin) + amMin * (amTemp2 < amMin)
-    amplifAmpImg.UpdateBuffer()     # !!!
     img.ChangeMemoryType(mt)
     return amplifAmpImg
 

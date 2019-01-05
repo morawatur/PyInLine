@@ -199,26 +199,21 @@ class LabelExt(QtWidgets.QLabel):
     def setImage(self, dispAmp=True, dispPhs=False, logScale=False, color=False, update_bcg=False, bright=0, cont=255, gamma=1.0):
         self.image.MoveToCPU()
 
+        # if image wasn't cropped then update buffer
+        if self.image.buffer.am.shape[0] == self.image.height:
+            self.image.UpdateBuffer()
+
         if dispAmp:
-            px_arr = np.copy(self.image.amPh.am)
+            px_arr = np.copy(self.image.buffer.am)
             if logScale:
                 buf_am = np.copy(px_arr)
                 buf_am[np.where(buf_am <= 0)] = 1e-5
                 px_arr = np.log(buf_am)
-        elif dispPhs:
-            px_arr = np.copy(self.image.amPh.ph)
         else:
-            self.image.update_cos_phase()
-            px_arr = np.copy(self.image.cos_phase)
-
-        if px_arr.shape[0] < const.dimSize:
-            limits = [np.min(px_arr), np.max(px_arr)]
-            factor = const.dimSize / px_arr.shape[0]
-            if limits[0] < -1.0 or limits[1] > 1.0:
-                px_arr_scaled = imsup.ScaleImage(px_arr, -1.0, 1.0)
-            else:
-                px_arr_scaled = np.copy(px_arr)
-            px_arr = tr.tr.rescale(px_arr_scaled, scale=factor, mode='constant').astype(np.float32)
+            px_arr = np.copy(self.image.buffer.ph)
+            if not dispPhs:
+                self.image.update_cos_phase()
+                px_arr = np.cos(px_arr)
 
         if not update_bcg:
             pixmap_to_disp = imsup.ScaleImage(px_arr, 0.0, 255.0)
@@ -357,9 +352,9 @@ class PlotWidget(QtWidgets.QWidget):
 
 # --------------------------------------------------------
 
-class TriangulateWidget(QtWidgets.QWidget):
+class InLineWidget(QtWidgets.QWidget):
     def __init__(self):
-        super(TriangulateWidget, self).__init__()
+        super(InLineWidget, self).__init__()
         file_dialog = QtWidgets.QFileDialog()
         image_path = file_dialog.getOpenFileName()[0]
         if image_path == '':
@@ -386,7 +381,8 @@ class TriangulateWidget(QtWidgets.QWidget):
     def initUI(self):
         self.plot_widget.canvas.setFixedHeight(350)
 
-        self.curr_img_name_label = QtWidgets.QLabel(self.display.image.name, self)
+        self.curr_info_label = QtWidgets.QLabel('', self)
+        self.update_curr_info_label()
 
         # ------------------------------
         # Navigation panel (1)
@@ -898,7 +894,7 @@ class TriangulateWidget(QtWidgets.QWidget):
         self.tabs.addTab(self.tab_corr, 'Corrections')
 
         vbox_panel = QtWidgets.QVBoxLayout()
-        vbox_panel.addWidget(self.curr_img_name_label)
+        vbox_panel.addWidget(self.curr_info_label)
         vbox_panel.addWidget(self.tabs)
         vbox_panel.addWidget(self.plot_widget)
 
@@ -914,6 +910,10 @@ class TriangulateWidget(QtWidgets.QWidget):
         self.setWindowIcon(QtGui.QIcon('gui/world.png'))
         self.show()
         self.setFixedSize(self.width(), self.height())  # disable window resizing
+
+    def update_curr_info_label(self):
+        curr_img = self.display.image
+        self.curr_info_label.setText('{0}, {1:.0f} nm'.format(curr_img.name, curr_img.defocus * 1e9))
 
     def enable_manual_panel(self):
         self.left_button.setEnabled(True)
@@ -966,6 +966,7 @@ class TriangulateWidget(QtWidgets.QWidget):
         for img, idx in zip(img_queue, range(len(img_queue))):
             img.numInSeries = idx + 1
             img.name = 'img0{0}'.format(idx+1) if idx < 9 else 'img{0}'.format(idx+1)
+        self.update_curr_info_label()
         self.name_input.setText(curr_img.name)
         self.fname_input.setText(curr_img.name)
 
@@ -981,13 +982,13 @@ class TriangulateWidget(QtWidgets.QWidget):
         curr_img = imgs[new_idx]
         if curr_img.name == '':
             curr_img.name = 'img0{0}'.format(new_idx + 1) if new_idx < 9 else 'img{0}'.format(new_idx + 1)
-        self.curr_img_name_label.setText(curr_img.name)
         self.name_input.setText(curr_img.name)
         self.fname_input.setText(curr_img.name)
         self.manual_mode_checkbox.setChecked(False)
         self.disable_manual_panel()
-        self.display.image = imgs[new_idx]
+        self.display.image = curr_img
         self.display.update_labs(is_show_labels_checked)
+        self.update_curr_info_label()
         self.update_display_and_bcg()
 
     def go_to_prev_image(self):
@@ -1246,6 +1247,7 @@ class TriangulateWidget(QtWidgets.QWidget):
             frag = zoom_fragment(img, real_sq_coords)
             img_list.insert(n, frag)
             self.display.pointSets.insert(n, [])
+            print('{0} cropped'.format(img.name))
 
         img_list.UpdateLinks()
 
@@ -1658,6 +1660,8 @@ class TriangulateWidget(QtWidgets.QWidget):
             exit_wave.ReIm2AmPh()
             exit_wave.MoveToCPU()
             exit_wave.name = 'wave_fun_0{0}'.format(i+1) if i < 9 else 'wave_fun_{0}'.format(i+1)
+            exit_wave = rescale_image_buffer_to_window(exit_wave, const.ccWidgetDim)
+
             self.insert_img_last(exit_wave)
             self.go_to_last_image()
             if i < n_iters - 1:
@@ -1731,6 +1735,8 @@ class TriangulateWidget(QtWidgets.QWidget):
         exit_wave_copy = imsup.CopyImage(self.curr_exit_wave)
         exit_wave_copy.ReIm2AmPh()
         exit_wave_copy.MoveToCPU()
+        exit_wave_copy = rescale_image_buffer_to_window(exit_wave_copy, const.ccWidgetDim)
+
         c_it = self.curr_iter
         exit_wave_copy.name = 'wave_fun_0{0}'.format(c_it) if c_it < 10 else 'wave_fun_{0}'.format(c_it)
         self.insert_img_last(exit_wave_copy)
@@ -1750,6 +1756,7 @@ class TriangulateWidget(QtWidgets.QWidget):
         self.curr_iter = 0
         self.curr_exit_wave = None
         self.last_tot_error = 0.0
+        self.update_curr_info_label()
         # self.curr_ewr_imgs = None
         print('EWR procedure was reset')
 
@@ -1832,7 +1839,7 @@ class TriangulateWidget(QtWidgets.QWidget):
 
         sim_imgs = prop.simulate_images(curr_img, df1, df2, df3, use_aberrs, A1, phi1, aper)
         for img in sim_imgs:
-            img.name += '_{0:.0f}nm'.format(img.defocus * 1e9)
+            img.name = curr_img.name + '_{0:.0f}nm'.format(img.defocus * 1e9)
             self.insert_img_after_curr(img)
             print('{0} added'.format(img.name))
 
@@ -1886,6 +1893,16 @@ def delete_n_prev_images(imgs, idx1, idx2):      # like del imgs[idx1:idx2]
 
 # --------------------------------------------------------
 
+def rescale_image_buffer_to_window(img, win_dim):
+    zoom_factor = win_dim / img.width
+    img_to_disp = tr.RescaleImageSki(img, zoom_factor)
+    img.buffer = imsup.ComplexAmPhMatrix(img_to_disp.height, img_to_disp.width, img_to_disp.memType)
+    img.buffer.am = np.copy(img_to_disp.amPh.am)
+    img.buffer.ph = np.copy(img_to_disp.amPh.ph)
+    return img
+
+# --------------------------------------------------------
+
 def cross_corr_images(img_list, n_div, frag_coords, df_min=0.0, df_max=-1.0, df_step=1.0):
     img_align_list = imsup.ImageList()
     img_list[0].shift = [0, 0]
@@ -1912,15 +1929,9 @@ def zoom_fragment(img, coords):
     crop_img = imsup.create_imgexp_from_img(crop_img)
     crop_img.MoveToCPU()
 
-    # orig_width = img.width
-    # crop_width = np.abs(coords[2] - coords[0])
-    # zoom_factor = orig_width / crop_width
-    # zoom_img = tr.RescaleImageSki(crop_img, zoom_factor)
-    # zoom_img.defocus = img.defocus
     crop_img.defocus = img.defocus
-    # zoom_img.px_dim *= zoom_factor
+    crop_img = rescale_image_buffer_to_window(crop_img, const.ccWidgetDim)
     return crop_img
-    # return zoom_img
 
 # --------------------------------------------------------
 
@@ -2085,9 +2096,9 @@ def RReplace(text, old, new, occurence):
 
 # --------------------------------------------------------
 
-def RunTriangulationWindow():
+def RunInLineWindow():
     app = QtWidgets.QApplication(sys.argv)
-    trWindow = TriangulateWidget()
+    ilWindow = InLineWidget()
     sys.exit(app.exec_())
 
 # --------------------------------------------------------

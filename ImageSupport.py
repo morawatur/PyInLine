@@ -263,7 +263,6 @@ class ImageExp(Image):
         if self.cmpRepr == self.cmp['CAP']:
             return
         super(ImageExp, self).ReIm2AmPh()
-        self.UpdateBuffer()
 
     def update_cos_phase(self):
         if self.memType == self.mem['CPU']:
@@ -510,7 +509,6 @@ def crop_am_ph_roi_cpu(img, coords):
 
     roi.amPh.am[:] = img.amPh.am[coords[1]:coords[3], coords[0]:coords[2]]
     roi.amPh.ph[:] = img.amPh.ph[coords[1]:coords[3], coords[0]:coords[2]]
-    roi.UpdateBuffer()
 
     if img.cos_phase is not None:
         roi.update_cos_phase()
