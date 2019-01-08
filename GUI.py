@@ -121,6 +121,10 @@ class LabelExt(QtWidgets.QLabel):
         self.show_lines = True
         self.show_labs = True
         self.show_grid = True
+        self.show_aper = False
+        self.show_hann = False
+        self.aper_diam = 0
+        self.hann_width = 0
         self.gain = 0.0
         self.bias = 0.0
         self.gamma = 0.0
@@ -172,6 +176,20 @@ class LabelExt(QtWidgets.QLabel):
             linePen.setColor(QtCore.Qt.red)
             qp.setPen(linePen)
             qp.drawRect(square)
+
+        if self.show_aper:
+            linePen.setStyle(QtCore.Qt.SolidLine)
+            linePen.setColor(QtCore.Qt.red)
+            qp.setPen(linePen)
+            tl_x = (const.ccWidgetDim - self.aper_diam) // 2
+            qp.drawEllipse(tl_x, tl_x, self.aper_diam, self.aper_diam)
+
+        if self.show_hann:
+            linePen.setStyle(QtCore.Qt.SolidLine)
+            linePen.setColor(QtCore.Qt.blue)
+            qp.setPen(linePen)
+            tl_x = (const.ccWidgetDim - self.hann_width) // 2
+            qp.drawRect(tl_x, tl_x, self.hann_width, self.hann_width)
 
         if len(self.frag_coords) > 0:
             qp.setPen(QtCore.Qt.NoPen)
@@ -495,12 +513,12 @@ class InLineWidget(QtWidgets.QWidget):
         export_all_button = QtWidgets.QPushButton('Export all', self)
         norm_phase_button = QtWidgets.QPushButton('Normalize phase', self)
 
-        self.export_png_radio_button = QtWidgets.QRadioButton('PNG image', self)
+        self.export_tiff_radio_button = QtWidgets.QRadioButton('TIFF image', self)
         self.export_bin_radio_button = QtWidgets.QRadioButton('Binary', self)
-        self.export_png_radio_button.setChecked(True)
+        self.export_tiff_radio_button.setChecked(True)
 
         export_group = QtWidgets.QButtonGroup(self)
-        export_group.addButton(self.export_png_radio_button)
+        export_group.addButton(self.export_tiff_radio_button)
         export_group.addButton(self.export_bin_radio_button)
 
         self.amp_radio_button.toggled.connect(self.update_display)
@@ -540,7 +558,7 @@ class InLineWidget(QtWidgets.QWidget):
         grid_exp.addWidget(self.fname_input, 2, 1)
         grid_exp.addWidget(export_button, 1, 2)
         grid_exp.addWidget(export_all_button, 2, 2)
-        grid_exp.addWidget(self.export_png_radio_button, 1, 3)
+        grid_exp.addWidget(self.export_tiff_radio_button, 1, 3)
         grid_exp.addWidget(self.export_bin_radio_button, 2, 3)
 
         self.tab_disp = QtWidgets.QWidget()
@@ -687,6 +705,7 @@ class InLineWidget(QtWidgets.QWidget):
         reset_ewr_button = QtWidgets.QPushButton('Reset EWR', self)
         sum_button = QtWidgets.QPushButton('Sum', self)
         diff_button = QtWidgets.QPushButton('Diff', self)
+        fft_button = QtWidgets.QPushButton('FFT', self)
         amplify_button = QtWidgets.QPushButton('Amplify', self)
         plot_button = QtWidgets.QPushButton('Plot profile', self)
 
@@ -713,10 +732,19 @@ class InLineWidget(QtWidgets.QWidget):
         self.det_abs_df_checkbox = QtWidgets.QCheckBox('Det. abs. defoc. values', self)
         self.det_abs_df_checkbox.setChecked(True)
 
+        self.show_aperture_checkbox = QtWidgets.QCheckBox('display', self)
+        self.show_aperture_checkbox.setChecked(False)
+        self.show_aperture_checkbox.toggled.connect(self.toggle_aperture)
+
+        self.show_hann_win_checkbox = QtWidgets.QCheckBox('display', self)
+        self.show_hann_win_checkbox.setChecked(False)
+        self.show_hann_win_checkbox.toggled.connect(self.toggle_hann_win)
+
         run_ewr_next_button.clicked.connect(self.run_ewr_next_iters)
         reset_ewr_button.clicked.connect(self.reset_ewr)
         sum_button.clicked.connect(self.calc_phs_sum)
         diff_button.clicked.connect(self.calc_phs_diff)
+        fft_button.clicked.connect(self.disp_fft)
         amplify_button.clicked.connect(self.amplify_phase)
         plot_button.clicked.connect(self.plot_profile)
 
@@ -727,6 +755,7 @@ class InLineWidget(QtWidgets.QWidget):
         grid_iwfr.setColumnStretch(3, 1)
         grid_iwfr.setColumnStretch(4, 1)
         grid_iwfr.setColumnStretch(5, 1)
+        grid_iwfr.setColumnStretch(6, 1)
         grid_iwfr.setRowStretch(0, 1)
         grid_iwfr.setRowStretch(7, 1)
         grid_iwfr.addWidget(start_num_label, 1, 1)
@@ -740,6 +769,8 @@ class InLineWidget(QtWidgets.QWidget):
         grid_iwfr.addWidget(self.aperture_input, 3, 4)
         grid_iwfr.addWidget(hann_win_label, 4, 4)
         grid_iwfr.addWidget(self.hann_win_input, 5, 4)
+        grid_iwfr.addWidget(self.show_aperture_checkbox, 3, 5)
+        grid_iwfr.addWidget(self.show_hann_win_checkbox, 5, 5)
         grid_iwfr.addWidget(self.use_aberrs_checkbox, 1, 4)
         grid_iwfr.addWidget(self.det_abs_df_checkbox, 4, 1)
         grid_iwfr.addWidget(run_ewr_next_button, 5, 1)
@@ -753,6 +784,7 @@ class InLineWidget(QtWidgets.QWidget):
         grid_calc.setColumnStretch(4, 1)
         grid_calc.setRowStretch(0, 1)
         grid_calc.setRowStretch(4, 1)
+        grid_calc.addWidget(fft_button, 1, 1)
         grid_calc.addWidget(sum_button, 2, 1)
         grid_calc.addWidget(diff_button, 3, 1)
         grid_calc.addWidget(amp_factor_label, 1, 2)
@@ -913,7 +945,7 @@ class InLineWidget(QtWidgets.QWidget):
 
     def update_curr_info_label(self):
         curr_img = self.display.image
-        self.curr_info_label.setText('{0}, {1:.0f} nm'.format(curr_img.name, curr_img.defocus * 1e9))
+        self.curr_info_label.setText('{0}, dim = {1} px, df = {2:.0f} nm'.format(curr_img.name, curr_img.width, curr_img.defocus * 1e9))
 
     def enable_manual_panel(self):
         self.left_button.setEnabled(True)
@@ -1043,20 +1075,20 @@ class InLineWidget(QtWidgets.QWidget):
                 # np.save(fname, cos_phs)
             print('Saved image to binary file: "{0}"'.format(fname))
         else:
-            fname_ext = '.png'
+            fname_ext = '.tif'
             log = True if self.log_scale_checkbox.isChecked() else False
             color = True if self.color_radio_button.isChecked() else False
 
             if is_amp_checked:
-                imsup.SaveAmpImage(curr_img, '{0}.png'.format(fname), log, color)
+                imsup.SaveAmpImage(curr_img, '{0}{1}'.format(fname, fname_ext), log, color)
             elif is_phs_checked:
-                imsup.SavePhaseImage(curr_img, '{0}.png'.format(fname), log, color)
+                imsup.SavePhaseImage(curr_img, '{0}{1}'.format(fname, fname_ext), log, color)
             else:
                 phs_tmp = np.copy(curr_img.amPh.ph)
                 curr_img.amPh.ph = np.cos(phs_tmp)
-                imsup.SavePhaseImage(curr_img, '{0}.png'.format(fname), log, color)
+                imsup.SavePhaseImage(curr_img, '{0}{1}'.format(fname, fname_ext), log, color)
                 curr_img.amPh.ph = np.copy(phs_tmp)
-            print('Saved image as "{0}.png"'.format(fname))
+            print('Saved image as "{0}{1}"'.format(fname, fname_ext))
 
         # save log file
         log_fname = '{0}_log.txt'.format(fname)
@@ -1355,6 +1387,30 @@ class InLineWidget(QtWidgets.QWidget):
         self.backup_image = None
         # self.changes_made = []
         self.display.setImage()
+
+    def disp_fft(self):
+        curr_img = self.display.image
+        curr_fft = cc.FFT(curr_img)
+        curr_fft = cc.FFT2Diff(curr_fft)
+        curr_fft.ReIm2AmPh()
+        curr_fft.MoveToCPU()
+        curr_fft = imsup.create_imgexp_from_img(curr_fft)
+        curr_fft = rescale_image_buffer_to_window(curr_fft, const.ccWidgetDim)
+        self.insert_img_after_curr(curr_fft)
+        self.log_scale_checkbox.setChecked(True)
+
+    def toggle_aperture(self):
+        aper_r = int(self.aperture_input.text())
+        aper_d = 2 * aper_r
+        self.display.aper_diam = real_to_disp_len(const.ccWidgetDim, self.display.image.width, aper_d)
+        self.display.show_aper = not self.display.show_aper
+        self.display.repaint()
+
+    def toggle_hann_win(self):
+        hann_w = int(self.hann_win_input.text())
+        self.display.hann_width = real_to_disp_len(const.ccWidgetDim, self.display.image.width, hann_w)
+        self.display.show_hann = not self.display.show_hann
+        self.display.repaint()
 
     def cross_corr_with_prev(self):
         curr_img = self.display.image
@@ -1863,6 +1919,7 @@ def LoadImageSeriesFromFirstFile(imgPath):
                              num=imgNum, px_dim_sz=pxDims[0])
         # img.LoadAmpData(np.sqrt(imgData).astype(np.float32))
         img.LoadAmpData(imgData.astype(np.float32))
+        img = rescale_image_buffer_to_window(img, const.dimSize)
         img.name = img_name_text
         # img.amPh.ph = np.copy(img.amPh.am)
         # ---
@@ -2024,10 +2081,17 @@ def CalcRealTLCoordsForPaddedImage(imgWidth, dispCoords):
 
 # --------------------------------------------------------
 
-def CalcDispCoords(dispWidth, imgWidth, realCoords):
-    factor = dispWidth / imgWidth
-    dispCoords = [ (rc * factor) + const.ccWidgetDim // 2 for rc in realCoords ]
-    return dispCoords
+def real_to_disp_len(disp_len, img_len, r_len):
+    factor = disp_len / img_len
+    d_len = r_len * factor
+    return d_len
+
+# --------------------------------------------------------
+
+# def CalcDispCoords(dispWidth, imgWidth, realCoords):
+#     factor = dispWidth / imgWidth
+#     dispCoords = [ (rc * factor) + const.ccWidgetDim // 2 for rc in realCoords ]
+#     return dispCoords
 
 # --------------------------------------------------------
 

@@ -38,7 +38,6 @@ def IFFT(fft):
 # -------------------------------------------------------------------
 
 def fft2diff_cpu(fft):
-    # diff = imsup.CopyImage(fft)
     diff = imsup.Image(fft.height, fft.width, imsup.Image.cmp['CAP'], imsup.Image.mem['CPU'])
     left_mid = fft.width // 2
     right_mid = left_mid

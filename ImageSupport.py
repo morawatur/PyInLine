@@ -2,6 +2,7 @@ import numpy as np
 from PIL import Image as im
 from numba import cuda
 import math, cmath
+# import scipy as sp
 import Constants as const
 import CudaConfig as ccfg
 import CrossCorr as cc
@@ -1293,3 +1294,30 @@ def flip_image_v(img):
     re_im_flip = np.copy(np.flipud(img.reIm))
     img.reIm = np.copy(re_im_flip)
     restore_img_mt_dt(img, mt, dt)
+
+#-------------------------------------------------------------------
+
+# def FFT(img):
+#     dt = img.cmpRepr
+#     img.AmPh2ReIm()
+#
+#     fft = ImageExp(img.height, img.width, Image.cmp['CRI'])
+#     fft.reIm = np.fft.fft2(img.reIm)
+#
+#     img.ChangeComplexRepr(dt)
+#     fft.ChangeComplexRepr(dt)
+#     return fft
+#
+# #-------------------------------------------------------------------
+#
+# def IFFT(fft):
+#     dt = fft.cmpRepr
+#     fft.AmPh2ReIm()
+#
+#     ifft = ImageExp(fft.height, fft.width, Image.cmp['CRI'])
+#     # ifft.reIm = np.fft.ifft2(fft.reIm).astype(np.complex64)   # doesn't work (don't know why)
+#     ifft.reIm = sp.fftpack.ifft2(fft.reIm)
+#
+#     fft.ChangeComplexRepr(dt)
+#     ifft.ChangeComplexRepr(dt)
+#     return ifft
