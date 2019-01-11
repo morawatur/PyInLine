@@ -1895,6 +1895,7 @@ class InLineWidget(QtWidgets.QWidget):
 
         sim_imgs = prop.simulate_images(curr_img, df1, df2, df3, use_aberrs, A1, phi1, aper)
         for img in sim_imgs:
+            img = rescale_image_buffer_to_window(img, const.ccWidgetDim)
             img.name = curr_img.name + '_{0:.0f}nm'.format(img.defocus * 1e9)
             self.insert_img_after_curr(img)
             print('{0} added'.format(img.name))
