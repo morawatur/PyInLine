@@ -148,25 +148,28 @@ def PropagateWave(img, ctf):
     fft = cc.FFT(img)
     fft.ReIm2AmPh()
 
-    # ctf = cc.Diff2FFT(ctf)      # !!!
+    # ctf = cc.Diff2FFT(ctf)
     ctf.ReIm2AmPh()
     ctf.MoveToCPU()
     ctf = cc.fft2diff_cpu(ctf)
-    # imsup.DisplayAmpImage(ctf)
-    # imsup.DisplayPhaseImage(ctf)
     ctf.MoveToGPU()
     ctf.ReIm2AmPh()
 
     fftProp = imsup.ImageExp(img.height, img.width, imsup.Image.cmp['CAP'], imsup.Image.mem['GPU'])
     fftProp.amPh = imsup.MultAmPhMatrices(fft.amPh, ctf.amPh)
-
     imgProp = cc.IFFT(fftProp)
-    # imgProp.ReIm2AmPh()
+
+    # normalization
+    norm_factor = 1.0 / (img.height * img.width)
+    imgProp.AmPh2ReIm()
     imgProp.MoveToCPU()
-    imgProp = imsup.re_im_2_am_ph_cpu(imgProp)      # !!!
+    imgProp.reIm *= norm_factor
+
+    imgProp.ReIm2AmPh()
+    # imgProp.MoveToCPU()
+    # imgProp = imsup.re_im_2_am_ph_cpu(imgProp)      # !!!
     imgProp.defocus = img.defocus + ctf.defocus
     imgProp.px_dim = img.px_dim
-    imgProp.MoveToGPU()
 
     ctf.ClearGPUMemory()
     fft.ClearGPUMemory()
@@ -219,16 +222,26 @@ def PropagateBackToDefocus(img, defocus, use_other_aberrs=True, aper=const.apert
 def run_backprop_iter(imgs_to_ewr, use_aberrs=False, ap=const.aperture, hann=const.hann_win):
     n_imgs = len(imgs_to_ewr)
     img_w, img_h = imgs_to_ewr[0].width, imgs_to_ewr[0].height
-    exit_wave = imsup.ImageExp(img_h, img_w, imsup.Image.cmp['CRI'], imsup.Image.mem['GPU'], px_dim_sz=imgs_to_ewr[0].px_dim)
+    # exit_wave = imsup.ImageExp(img_h, img_w, imsup.Image.cmp['CRI'], imsup.Image.mem['GPU'], px_dim_sz=imgs_to_ewr[0].px_dim)
+    exit_wave = imsup.ImageExp(img_h, img_w, imsup.Image.cmp['CAP'], imsup.Image.mem['CPU'], px_dim_sz=imgs_to_ewr[0].px_dim)
 
     for img, idx in zip(imgs_to_ewr, range(0, n_imgs)):
         img.MoveToGPU()
         img = PropagateToFocus(img, use_other_aberrs=use_aberrs, aper=ap, hann_width=hann)
-        img.AmPh2ReIm()
-        exit_wave.reIm = arrsup.AddArrayToArray(exit_wave.reIm, img.reIm)
+        # img.AmPh2ReIm()
+        img.ReIm2AmPh()             # !!!
+        img.MoveToCPU()             # !!!
+        # exit_wave.reIm = arrsup.AddArrayToArray(exit_wave.reIm, img.reIm)
         # exit_wave.reIm = arrsup.AddTwoArrays(exit_wave.reIm, img.reIm)
+        exit_wave.amPh.am += img.amPh.am
+        exit_wave.amPh.ph += img.amPh.ph
 
-    exit_wave.reIm = arrsup.MultArrayByScalar(exit_wave.reIm, 1 / n_imgs)
+    # exit_wave.reIm = arrsup.MultArrayByScalar(exit_wave.reIm, 1 / n_imgs)
+    exit_wave.MoveToCPU()           # !!!
+    exit_wave.amPh.am /= n_imgs     # !!!
+    exit_wave.amPh.ph /= n_imgs     # !!!
+    exit_wave.MoveToGPU()           # !!!
+    exit_wave.AmPh2ReIm()           # !!!
     return exit_wave
 
 # -------------------------------------------------------------------
@@ -240,17 +253,20 @@ def run_forwprop_iter(exit_wave, imgs_to_ewr, use_aberrs=False, ap=const.apertur
     for img, idx in zip(imgs_to_ewr, range(0, n_imgs)):
         imgs_to_ewr[idx] = PropagateBackToDefocus(exit_wave, img.defocus, use_other_aberrs=use_aberrs, aper=ap, hann_width=hann)
         img.MoveToCPU()
-        tot_error += calc_sum_squared_error(img.amPh.am, imgs_to_ewr[idx].amPh.am)     # !!!
+        sse = calc_sum_squared_error(img.amPh.am, imgs_to_ewr[idx].amPh.am)
+        print('Pair {0}{1}: SSE = {2:.3f} %'.format('0' if idx < 9 else '', idx+1, sse * 100))
+        tot_error += sse
         imgs_to_ewr[idx].amPh.am = np.copy(img.amPh.am)  # restore original amplitude
 
     tot_error /= n_imgs
-    # print('Total error = {0:.2f}%'.format(tot_error * 100))
+    # print('Total error = {0:.3f}%'.format(tot_error * 100))
     return tot_error
 
 # -------------------------------------------------------------------
 
 def calc_sum_squared_error(arr_ref, arr):
     denom = np.sum(arr_ref)
+    # print(np.sum(arr_ref), np.sum(arr))
     errors = np.power(np.sqrt(arr_ref) - np.sqrt(arr), 2)
     sse = np.sum(errors) / denom
     return sse

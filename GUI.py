@@ -1783,9 +1783,9 @@ class InLineWidget(QtWidgets.QWidget):
 
             delta_tot_error = tot_error - self.last_tot_error
             self.last_tot_error = tot_error
-            # wychodzi b. duzy total error, przesledzic skad sie to bierze
-            print('Total error = {0:.2f}%'.format(tot_error * 100))
-            print('Delta error = {0:.2f}%'.format(delta_tot_error * 100))
+            # wychodzi b. duzy total error, przesledzic skad sie to bierze - brak normalizacji IFFT
+            print('Total error = {0:.3f} %'.format(tot_error * 100))
+            print('Delta error = {0:.3f} %'.format(delta_tot_error * 100))
 
         ccfg.GetGPUMemoryUsed()
         exit_wave_copy = imsup.CopyImage(self.curr_exit_wave)

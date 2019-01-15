@@ -1302,7 +1302,7 @@ def flip_image_v(img):
 #     img.AmPh2ReIm()
 #
 #     fft = ImageExp(img.height, img.width, Image.cmp['CRI'])
-#     fft.reIm = np.fft.fft2(img.reIm)
+#     fft.reIm = np.fft.fft2(img.reIm, norm="ortho")
 #
 #     img.ChangeComplexRepr(dt)
 #     fft.ChangeComplexRepr(dt)
@@ -1315,7 +1315,7 @@ def flip_image_v(img):
 #     fft.AmPh2ReIm()
 #
 #     ifft = ImageExp(fft.height, fft.width, Image.cmp['CRI'])
-#     # ifft.reIm = np.fft.ifft2(fft.reIm).astype(np.complex64)   # doesn't work (don't know why)
+#     # ifft.reIm = np.fft.ifft2(fft.reIm, norm="ortho").astype(np.complex64)   # doesn't work (don't know why)
 #     ifft.reIm = sp.fftpack.ifft2(fft.reIm)
 #
 #     fft.ChangeComplexRepr(dt)
