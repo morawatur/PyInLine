@@ -1076,19 +1076,20 @@ class InLineWidget(QtWidgets.QWidget):
             print('Saved image to binary file: "{0}"'.format(fname))
         else:
             fname_ext = '.tif'
+            img_fname = '{0}{1}'.format(fname, fname_ext)
             log = True if self.log_scale_checkbox.isChecked() else False
             color = True if self.color_radio_button.isChecked() else False
 
             if is_amp_checked:
-                imsup.SaveAmpImage(curr_img, '{0}{1}'.format(fname, fname_ext), log, color)
+                imsup.SaveAmpImage(curr_img, img_fname, log, color)
             elif is_phs_checked:
-                imsup.SavePhaseImage(curr_img, '{0}{1}'.format(fname, fname_ext), log, color)
+                imsup.SavePhaseImage(curr_img, img_fname, log, color)
             else:
                 phs_tmp = np.copy(curr_img.amPh.ph)
                 curr_img.amPh.ph = np.cos(phs_tmp)
-                imsup.SavePhaseImage(curr_img, '{0}{1}'.format(fname, fname_ext), log, color)
+                imsup.SavePhaseImage(curr_img, img_fname, log, color)
                 curr_img.amPh.ph = np.copy(phs_tmp)
-            print('Saved image as "{0}{1}"'.format(fname, fname_ext))
+            print('Saved image as "{0}"'.format(img_fname))
 
         # save log file
         log_fname = '{0}_log.txt'.format(fname)
