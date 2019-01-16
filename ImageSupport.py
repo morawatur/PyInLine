@@ -260,11 +260,6 @@ class ImageExp(Image):
             self.cos_phase = None
             self.cos_phase = np.copy(cos_phs)
 
-    def ReIm2AmPh(self):
-        if self.cmpRepr == self.cmp['CAP']:
-            return
-        super(ImageExp, self).ReIm2AmPh()
-
     def update_cos_phase(self):
         if self.memType == self.mem['CPU']:
             self.cos_phase = np.cos(self.amPh.ph)

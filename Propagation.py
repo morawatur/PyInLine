@@ -325,7 +325,7 @@ def run_iwfr(imgs_to_iwfr, n_iters):
 
 # -------------------------------------------------------------------
 
-def simulate_images(exit_wave, df1, df2=None, df3=None, use_aberrs=True, A1_amp=0.0, A1_phs=0.0, aper=const.aperture):
+def simulate_images(exit_wave, df1, df2=None, df3=None, use_aberrs=True, A1_amp=0.0, A1_phs=0.0, aper=const.aperture, hann=const.hann_win):
     if df2 is None or df3 is None:
         df2 = df1 + 1
         df3 = 2
@@ -335,13 +335,10 @@ def simulate_images(exit_wave, df1, df2=None, df3=None, use_aberrs=True, A1_amp=
     if use_aberrs:
         const.A1_amp = A1_amp       # !!!
         const.A1_phs = A1_phs       # !!!
-        hann_win = 2.2 * aper
-    else:
-        hann_win = 0
 
     for df in cc.frange(df1, df2, df3):
         print('Sim. {0:.2f} nm'.format(df * 1e9))
-        img = PropagateBackToDefocus(exit_wave, df, use_aberrs, aper, hann_win)
+        img = PropagateBackToDefocus(exit_wave, df, use_aberrs, aper, hann)
         img.MoveToCPU()
         img.defocus = df
         sim_imgs.append(img)

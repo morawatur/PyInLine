@@ -1783,7 +1783,6 @@ class InLineWidget(QtWidgets.QWidget):
 
             delta_tot_error = tot_error - self.last_tot_error
             self.last_tot_error = tot_error
-            # wychodzi b. duzy total error, przesledzic skad sie to bierze - brak normalizacji IFFT
             print('Total error = {0:.3f} %'.format(tot_error * 100))
             print('Delta error = {0:.3f} %'.format(delta_tot_error * 100))
 
@@ -1886,6 +1885,7 @@ class InLineWidget(QtWidgets.QWidget):
         A1 = float(self.A1_sim_input.text()) * 1e-9
         phi1 = float(self.phi1_sim_input.text())
         aper = int(self.aperture_input.text())
+        hann_win = int(self.hann_win_input.text())
 
         print('df1 = {0:.0f} nm\ndf2 = {1:.0f} nm\ndf3 = {2:.0f} nm'.format(df1 * 1e9, df2 * 1e9, df3 * 1e9))
         print('A1 amp = {0:.0f} nm\nA1 ang = {1:.0f} deg\nAperture = {2:.0f} px'.format(A1 * 1e9, phi1, aper))
@@ -1893,8 +1893,9 @@ class InLineWidget(QtWidgets.QWidget):
         # const.A1_amp = A1
         # const.A1_phs = phi1
 
-        sim_imgs = prop.simulate_images(curr_img, df1, df2, df3, use_aberrs, A1, phi1, aper)
+        sim_imgs = prop.simulate_images(curr_img, df1, df2, df3, use_aberrs, A1, phi1, aper, hann_win)
         for img in sim_imgs:
+            img = imsup.create_imgexp_from_img(img)
             img = rescale_image_buffer_to_window(img, const.ccWidgetDim)
             img.name = curr_img.name + '_{0:.0f}nm'.format(img.defocus * 1e9)
             self.insert_img_after_curr(img)
@@ -1920,7 +1921,7 @@ def LoadImageSeriesFromFirstFile(imgPath):
                              num=imgNum, px_dim_sz=pxDims[0])
         # img.LoadAmpData(np.sqrt(imgData).astype(np.float32))
         img.LoadAmpData(imgData.astype(np.float32))
-        img = rescale_image_buffer_to_window(img, const.dimSize)
+        img = rescale_image_buffer_to_window(img, const.ccWidgetDim)
         img.name = img_name_text
         # img.amPh.ph = np.copy(img.amPh.am)
         # ---
