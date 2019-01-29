@@ -1902,6 +1902,12 @@ class InLineWidget(QtWidgets.QWidget):
             self.insert_img_after_curr(img)
             print('{0} added'.format(img.name))
 
+    def keyPressEvent(self, event):
+        if event.key() == QtCore.Qt.Key_6:
+            self.go_to_next_image()
+        elif event.key() == QtCore.Qt.Key_4:
+            self.go_to_prev_image()
+
 # --------------------------------------------------------
 
 def LoadImageSeriesFromFirstFile(imgPath):
