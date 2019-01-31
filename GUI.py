@@ -384,9 +384,9 @@ class InLineWidget(QtWidgets.QWidget):
         self.display.setFixedHeight(const.ccWidgetDim)
         self.plot_widget = PlotWidget()
         self.backup_image = None
-        self.changes_made = []
         self.shift = [0, 0]
-        self.rot_angle = 0
+        # self.rot_angle = 0
+        # self.changes_made = []
         self.mag_coeff = 1.0
         self.warp_points = []
         self.curr_iter = 0
