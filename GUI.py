@@ -594,7 +594,7 @@ class InLineWidget(QtWidgets.QWidget):
         self.rot_clockwise_button.clicked.connect(self.rot_right)
         self.rot_counter_clockwise_button.clicked.connect(self.rot_left)
         self.apply_button.clicked.connect(self.apply_changes)
-        self.reset_button.clicked.connect(self.reset_changes)
+        self.reset_button.clicked.connect(self.reset_changes_and_update_display)
 
         self.disable_manual_panel()
 
@@ -960,6 +960,8 @@ class InLineWidget(QtWidgets.QWidget):
         self.reset_button.setEnabled(True)
 
     def disable_manual_panel(self):
+        if self.backup_image is not None:
+            self.reset_changes()
         self.left_button.setEnabled(False)
         self.right_button.setEnabled(False)
         self.up_button.setEnabled(False)
@@ -1312,10 +1314,10 @@ class InLineWidget(QtWidgets.QWidget):
 
     def create_backup_image(self):
         if self.manual_mode_checkbox.isChecked():
-            if self.backup_image is None:
-                self.backup_image = imsup.copy_am_ph_image(self.display.image)
+            self.backup_image = imsup.copy_am_ph_image(self.display.image)
             self.enable_manual_panel()
         else:
+            self.backup_image = None
             self.disable_manual_panel()
 
     def move_left(self):
@@ -1347,7 +1349,8 @@ class InLineWidget(QtWidgets.QWidget):
 
         curr.amPh.am = np.copy(shifted_img.amPh.am)
         curr.amPh.ph = np.copy(shifted_img.amPh.ph)
-        curr.shift = total_shift
+        self.display.image = rescale_image_buffer_to_window(curr, const.ccWidgetDim)
+        self.display.image.shift = total_shift
         self.display.setImage()
 
     def rot_left(self):
@@ -1371,23 +1374,37 @@ class InLineWidget(QtWidgets.QWidget):
 
         curr.amPh.am = np.copy(rotated_img.amPh.am)
         curr.amPh.ph = np.copy(rotated_img.amPh.ph)
-        curr.rot = total_rot
+        self.display.image = rescale_image_buffer_to_window(curr, const.ccWidgetDim)
+        self.display.image.rot = total_rot
         self.display.setImage()
 
-    def repeat_prev_mods(self):
-        curr = imsup.copy_am_ph_image(self.backup_image)
-        for mod in self.changes_made:
-            curr = modify_image(curr, mod[:2], bool(mod[2]))
-        self.display.image = curr
+    # def repeat_prev_mods(self):
+    #     curr = imsup.copy_am_ph_image(self.backup_image)
+    #     for mod in self.changes_made:
+    #         curr = modify_image(curr, mod[:2], bool(mod[2]))
+    #     self.display.image = curr
+
+    def zero_shift_rot(self):
+        self.display.image.shift = [0, 0]
+        self.display.image.rot = 0
 
     def apply_changes(self):
-        self.backup_image = None
+        self.zero_shift_rot()
+        self.backup_image = imsup.copy_am_ph_image(self.display.image)
+        print('Changes for {0} have been applied'.format(self.display.image.name))
 
     def reset_changes(self):
-        self.display.image = imsup.copy_am_ph_image(self.backup_image)
+        curr = self.display.image
+        self.zero_shift_rot()
+        curr.amPh.am = np.copy(self.backup_image.amPh.am)
+        curr.amPh.ph = np.copy(self.backup_image.amPh.ph)
+        self.display.image = rescale_image_buffer_to_window(curr, const.ccWidgetDim)
         self.backup_image = None
-        # self.changes_made = []
+
+    def reset_changes_and_update_display(self):
+        self.reset_changes()
         self.display.setImage()
+        print('Changes for {0} have been revoked'.format(self.display.image.name))
 
     def disp_fft(self):
         curr_img = self.display.image

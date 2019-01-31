@@ -272,6 +272,7 @@ def shift_am_ph_image(img, shift):
     blockDim, gridDim = ccfg.DetermineCudaConfigNew(img.amPh.am.shape)
     ShiftImage_dev[gridDim, blockDim](img.amPh.am, img_shifted.amPh.am, shift_d, 0.0)
     ShiftImage_dev[gridDim, blockDim](img.amPh.ph, img_shifted.amPh.ph, shift_d, 0.0)
+    # img_shifted.UpdateBuffer()
 
     if img.cos_phase is not None:
         img_shifted.update_cos_phase()

@@ -11,4 +11,4 @@ gui.RunInLineWindow()
 # TODO list
 # Problemy:
 # 1 - przy powtornym zsuwaniu obrazow program sie wykrzacza
-# 2 - reczne przesuwanie obrazow nie dziala na wyswietlany obraz (buffer)
+# 2 - reczne przesuwanie obrazow nie dziala na wyswietlany obraz (buffer)   # fixed!

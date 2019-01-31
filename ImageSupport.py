@@ -808,6 +808,8 @@ def copy_am_ph_image(img):
                         defocus=img.defocus, num=img.numInSeries, px_dim_sz=img.px_dim)
     img_copy.amPh.am = np.copy(img.amPh.am)
     img_copy.amPh.ph = np.copy(img.amPh.ph)
+    img_copy.buffer.am = np.copy(img.buffer.am)
+    img_copy.buffer.ph = np.copy(img.buffer.ph)
 
     if img.prev is not None:
         img_copy.prev = img.prev
