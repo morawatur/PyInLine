@@ -1620,6 +1620,7 @@ class InLineWidget(QtWidgets.QWidget):
         phs_amplified.amPh.ph *= amp_factor
         phs_amplified.update_cos_phase()
         phs_amplified.name = '{0}_x{1:.0f}'.format(curr_name, amp_factor)
+        phs_amplified = rescale_image_buffer_to_window(phs_amplified, const.ccWidgetDim)
         self.insert_img_after_curr(phs_amplified)
         self.cos_phs_radio_button.setChecked(True)
 
