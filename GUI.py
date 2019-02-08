@@ -420,6 +420,8 @@ class InLineWidget(QtWidgets.QWidget):
         delete_button = QtWidgets.QPushButton('Delete', self)
         clear_button = QtWidgets.QPushButton('Clear', self)
         undo_button = QtWidgets.QPushButton('Undo', self)
+        load_button = QtWidgets.QPushButton('Load prev. session', self)
+        save_button = QtWidgets.QPushButton('Save this session', self)
 
         prev_button.clicked.connect(self.go_to_prev_image)
         next_button.clicked.connect(self.go_to_next_image)
@@ -432,9 +434,14 @@ class InLineWidget(QtWidgets.QWidget):
         delete_button.clicked.connect(self.delete_image)
         clear_button.clicked.connect(self.clear_image)
         undo_button.clicked.connect(self.remove_last_point)
+        load_button.clicked.connect(self.load_session)
+        save_button.clicked.connect(self.save_curr_session)
+
+        session_label = QtWidgets.QLabel('session01', self)
 
         self.name_input = QtWidgets.QLineEdit(self.display.image.name, self)
         self.n_to_zoom_input = QtWidgets.QLineEdit('1', self)
+        self.session_name_input = QtWidgets.QLineEdit('session01', self)
 
         hbox_name = QtWidgets.QHBoxLayout()
         hbox_name.addWidget(set_name_button)
@@ -453,7 +460,7 @@ class InLineWidget(QtWidgets.QWidget):
         self.tab_nav.layout.setColumnStretch(4, 1)
         self.tab_nav.layout.setColumnStretch(5, 1)
         self.tab_nav.layout.setRowStretch(0, 1)
-        self.tab_nav.layout.setRowStretch(7, 1)
+        self.tab_nav.layout.setRowStretch(9, 1)
         self.tab_nav.layout.addWidget(prev_button, 1, 1, 1, 2)
         self.tab_nav.layout.addWidget(next_button, 1, 3, 1, 2)
         self.tab_nav.layout.addWidget(lswap_button, 2, 1, 1, 2)
@@ -468,6 +475,10 @@ class InLineWidget(QtWidgets.QWidget):
         self.tab_nav.layout.addWidget(undo_button, 5, 3, 1, 2)
         self.tab_nav.layout.addWidget(reset_names_button, 6, 1, 1, 2)
         self.tab_nav.layout.addWidget(self.clear_prev_checkbox, 6, 3, 1, 2)
+        self.tab_nav.layout.addWidget(load_button, 7, 1, 1, 2)
+        self.tab_nav.layout.addWidget(save_button, 8, 1, 1, 2)
+        self.tab_nav.layout.addWidget(session_label, 7, 3, 1, 2)
+        self.tab_nav.layout.addWidget(self.session_name_input, 8, 3, 1, 2)
         self.tab_nav.setLayout(self.tab_nav.layout)
 
         # ------------------------------
@@ -1311,6 +1322,87 @@ class InLineWidget(QtWidgets.QWidget):
             last_label.deleteLater()
         del self.display.pointSets[curr_idx][-1]
         self.display.repaint()
+
+    def save_curr_session(self):
+        import struct
+
+        session_name = self.session_name_input.text()
+        save_file = open('{0}.inlh'.format(session_name), 'ab')
+        curr_img = self.display.image
+        first_img = imsup.GetFirstImage(curr_img)
+        all_img_list = imsup.CreateImageListFromFirstImage(first_img)
+        print('wat1')
+        n_imgs = len(all_img_list)
+        start_num = int(self.start_num_input.text())
+        in_foc_num = int(self.in_focus_input.text())
+        n_to_ewr = int(self.n_to_ewr_input.text())
+        ap_radius = int(self.aperture_input.text())
+        hann_win = int(self.hann_win_input.text())
+        print('wat2')
+        gen_info_bytes = bytearray(n_imgs)
+        gen_info_bytes.extend(bytearray(start_num) + bytearray(in_foc_num) + bytearray(n_to_ewr))
+        gen_info_bytes.extend(bytearray(ap_radius) + bytearray(hann_win))
+        print('wat3')
+        save_file.write(gen_info_bytes)
+        print('wat4')
+        for img in all_img_list:
+            print(img.name)
+            print('wlazlem')
+            img_bytes = bytearray(len(img.name)) + bytearray(img.name, 'utf8')
+            print('wat5')
+            img_h_bytes = bytearray(struct.pack('i', img.height))
+            img_w_bytes = bytearray(struct.pack('i', img.width))
+            img_df_bytes = bytearray(struct.pack('f', img.defocus))
+            print('wat6')
+            # img_bytes.extend([img.height.to_bytes(), img.width.to_bytes(), img.defocus.to_bytes()])
+            img_bytes.extend(img_h_bytes)
+            img_bytes.extend(img_w_bytes)
+            print('wat6.5')
+            img_bytes.extend(img_df_bytes)
+            print('wat7')
+            img_bytes.extend(img.amPh.am.tobytes())
+            print('wat8')
+            img_bytes.extend(img.amPh.ph.tobytes())
+            print('wat9')
+            save_file.write(img_bytes)
+        save_file.close()
+        print('Session saved to {0}.inlh'.format(session_name))
+
+    def load_session(self):
+        from sys import getsizeof
+        session_name = self.session_name_input.text()
+        save_file = open('{0}.inlh'.format(session_name), 'rb')
+        int_sz = getsizeof(int())
+        float_sz = getsizeof(float())
+        n_gen_items = 6
+        gen_info_bytes = save_file.read(n_gen_items * int_sz)
+        gen_data = []
+        for n in range(n_gen_items):
+            gen_data.append(int(gen_info_bytes[n*int_sz:(n+1)*int_sz]))
+
+        n_imgs, start_num, in_foc_num, n_to_ewr, ap_radius, hann_win = gen_data
+        img_list = imsup.ImageList()
+
+        for i in range(n_imgs):
+            img = imsup.create_empty_image()
+            name_len = int(save_file.read(int_sz))
+            img.name = str(save_file.read(name_len))
+            img.height = int(save_file.read(int_sz))
+            img.width = int(save_file.read(int_sz))
+            img.defocus = float(save_file.read(float_sz))
+            num_data_size = img.height * img.width * float_sz
+            amp_bytes = save_file.read(num_data_size)
+            phs_bytes = save_file.read(num_data_size)
+            img.amPh.am = np.fromstring(str(amp_bytes), dtype='<f4')
+            img.amPh.ph = np.fromstring(str(phs_bytes), dtype='<f4')
+            img_list.append(img)
+
+        save_file.close()
+        img_list.UpdateAndRestrainLinks()
+        self.display.image = img_list[0]
+        self.update_display()
+        self.update_curr_info_label()
+        print('Session "{0}" loaded successfully'.format(session_name))
 
     def create_backup_image(self):
         if self.manual_mode_checkbox.isChecked():

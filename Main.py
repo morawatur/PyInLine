@@ -11,4 +11,5 @@ gui.RunInLineWindow()
 # TODO list
 # Problemy:
 # 1 - przy powtornym zsuwaniu obrazow program sie wykrzacza
+# 2 - opcja zapisu/odczytu sesji (tj. aktualnych obrazow do plikow binarnych)
 # 2 - reczne przesuwanie obrazow nie dziala na wyswietlany obraz (buffer)   # fixed!

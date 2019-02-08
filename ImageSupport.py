@@ -802,6 +802,12 @@ def copy_re_im_image(img):
 
 #-------------------------------------------------------------------
 
+def create_empty_image():
+    img = ImageExp(0, 0, cmpRepr=Image.cmp['CAP'], memType=Image.mem['CPU'])
+    return img
+
+#-------------------------------------------------------------------
+
 def copy_am_ph_image(img):
     img.MoveToCPU()
     img_copy = ImageExp(img.height, img.width, cmpRepr=img.cmpRepr, memType=img.memType,
