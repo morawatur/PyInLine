@@ -198,6 +198,7 @@ class ImageExp(Image):
         self.parent = super(ImageExp, self)
         self.shift = [0, 0]
         self.rot = 0
+        self.amp_factor = 1.0
         self.cos_phase = None
         self.buffer = ComplexAmPhMatrix(height, width, memType)
 
