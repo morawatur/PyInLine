@@ -718,7 +718,8 @@ class InLineWidget(QtWidgets.QWidget):
         diff_button = QtWidgets.QPushButton('Diff', self)
         fft_button = QtWidgets.QPushButton('FFT', self)
         amplify_button = QtWidgets.QPushButton('Amplify', self)
-        plot_button = QtWidgets.QPushButton('Plot profile', self)
+        plot_prof_button = QtWidgets.QPushButton('Plot profile', self)
+        plot_z_prof_button = QtWidgets.QPushButton('Plot z-profile', self)
 
         in_focus_label = QtWidgets.QLabel('In-focus image number', self)
         start_num_label = QtWidgets.QLabel('Starting image number', self)
@@ -727,6 +728,7 @@ class InLineWidget(QtWidgets.QWidget):
         hann_win_label = QtWidgets.QLabel('Hann window [px]', self)
         amp_factor_label = QtWidgets.QLabel('Amp. factor', self)
         int_width_label = QtWidgets.QLabel('Profile width [px]', self)
+        prof_depth_label = QtWidgets.QLabel('Profile depth [imgs]', self)
 
         self.in_focus_input = QtWidgets.QLineEdit('1', self)
         self.start_num_input = QtWidgets.QLineEdit('1', self)
@@ -736,6 +738,7 @@ class InLineWidget(QtWidgets.QWidget):
         self.hann_win_input = QtWidgets.QLineEdit(str(const.hann_win), self)
         self.amp_factor_input = QtWidgets.QLineEdit('2.0', self)
         self.int_width_input = QtWidgets.QLineEdit('1', self)
+        self.prof_depth_input = QtWidgets.QLineEdit('10', self)
 
         self.use_aberrs_checkbox = QtWidgets.QCheckBox('Use aberrations', self)
         self.use_aberrs_checkbox.setChecked(False)
@@ -757,7 +760,8 @@ class InLineWidget(QtWidgets.QWidget):
         diff_button.clicked.connect(self.calc_phs_diff)
         fft_button.clicked.connect(self.disp_fft)
         amplify_button.clicked.connect(self.amplify_phase)
-        plot_button.clicked.connect(self.plot_profile)
+        plot_prof_button.clicked.connect(self.plot_profile)
+        plot_z_prof_button.clicked.connect(self.plot_depth_profile)
 
         grid_iwfr = QtWidgets.QGridLayout()
         grid_iwfr.setColumnStretch(0, 1)
@@ -793,6 +797,7 @@ class InLineWidget(QtWidgets.QWidget):
         grid_calc.setColumnStretch(2, 1)
         grid_calc.setColumnStretch(3, 1)
         grid_calc.setColumnStretch(4, 1)
+        grid_calc.setColumnStretch(5, 1)
         grid_calc.setRowStretch(0, 1)
         grid_calc.setRowStretch(4, 1)
         grid_calc.addWidget(fft_button, 1, 1)
@@ -801,9 +806,12 @@ class InLineWidget(QtWidgets.QWidget):
         grid_calc.addWidget(amp_factor_label, 1, 2)
         grid_calc.addWidget(self.amp_factor_input, 2, 2)
         grid_calc.addWidget(amplify_button, 3, 2)
-        grid_calc.addWidget(plot_button, 3, 3)
+        grid_calc.addWidget(plot_prof_button, 3, 3)
         grid_calc.addWidget(int_width_label, 1, 3)
         grid_calc.addWidget(self.int_width_input, 2, 3)
+        grid_calc.addWidget(plot_z_prof_button, 3, 4)
+        grid_calc.addWidget(prof_depth_label, 1, 4)
+        grid_calc.addWidget(self.prof_depth_input, 2, 4)
 
         self.tab_rec = QtWidgets.QWidget()
         self.tab_rec.layout = QtWidgets.QVBoxLayout()
@@ -1976,6 +1984,26 @@ class InLineWidget(QtWidgets.QWidget):
         dists *= 1e9
 
         self.plot_widget.plot(dists, int_profile, 'Distance [nm]', 'Intensity [a.u.]')
+
+    def plot_depth_profile(self):
+        curr_img = self.display.image
+        curr_idx = curr_img.numInSeries - 1
+        how_many = int(self.prof_depth_input.text())
+        sel_pt = self.display.pointSets[curr_idx][0]
+        img_list = imsup.CreateImageListFromImage(curr_img, how_many)
+        profile = []
+        z_dists = []
+        amp_checked = self.amp_radio_button.isChecked()
+        for img in img_list:
+            z_dists.append(img.defocus * 1e9)
+            if amp_checked:
+                profile.append(img.amPh.am[sel_pt[0], sel_pt[1]])
+            else:
+                profile.append(img.amPh.ph[sel_pt[0], sel_pt[1]])
+
+        z_dists = np.array(z_dists, dtype=np.float32)
+        profile = np.array(profile, dtype=np.float32)
+        self.plot_widget.plot(z_dists, profile, 'Distance [nm]', 'Amplitude [a.u.]' if amp_checked else 'Phase [rad]')
 
     def simulate_images_for_df(self):
         curr_img = self.display.image
