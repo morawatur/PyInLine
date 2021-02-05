@@ -2023,10 +2023,13 @@ class InLineWidget(QtWidgets.QWidget):
         # const.A1_phs = phi1
 
         sim_imgs = prop.simulate_images(curr_img, df1, df2, df3, use_aberrs, A1, phi1, aper, hann_win)
+        idx = 1
         for img in sim_imgs:
             img = imsup.create_imgexp_from_img(img)
             img = rescale_image_buffer_to_window(img, const.ccWidgetDim)
-            img.name = curr_img.name + '_{0:.0f}nm'.format(img.defocus * 1e9)
+            img.name = '0{0}_'.format(idx) if idx < 10 else '{0}_'.format(idx)
+            idx += 1
+            img.name += curr_img.name + '_{0:.0f}nm'.format(img.defocus * 1e9)
             self.insert_img_after_curr(img)
             print('{0} added'.format(img.name))
 
