@@ -1,7 +1,11 @@
 import numpy as np
-from accelerate.cuda import fft as cufft
-# from pyculib import fft as cufft
 from numba import cuda
+
+try:
+    from accelerate.cuda import fft as cufft
+    # from pyculib import fft as cufft
+except ImportError:
+    cufft = None
 
 import aberrations as ab
 import Constants as const
@@ -15,12 +19,27 @@ import Propagation as prop
 def FFT(img):
     mt = img.memType
     dt = img.cmpRepr
-    img.MoveToGPU()
-    img.AmPh2ReIm()
-    fft = imsup.Image(img.height, img.width, imsup.Image.cmp['CRI'], imsup.Image.mem['GPU'])
-    cufft.fft(img.reIm, fft.reIm)
-    img.ChangeComplexRepr(dt)
-    img.ChangeMemoryType(mt)
+
+    if cufft is not None:
+        img.MoveToGPU()
+        img.AmPh2ReIm()
+
+        fft = imsup.Image(img.height, img.width, imsup.Image.cmp['CRI'], imsup.Image.mem['GPU'])
+        cufft.fft(img.reIm, fft.reIm)
+
+        img.ChangeComplexRepr(dt)
+        img.ChangeMemoryType(mt)
+    else:
+        img.AmPh2ReIm()
+        img.MoveToCPU()
+
+        fft = imsup.Image(img.height, img.width, imsup.Image.cmp['CRI'], imsup.Image.mem['CPU'])
+        fft.reIm = np.fft.fft2(img.reIm).astype(np.complex64)
+
+        img.ChangeMemoryType(mt)
+        fft.ChangeMemoryType(mt)
+        img.ChangeComplexRepr(dt)
+
     return fft
 
 #-------------------------------------------------------------------
@@ -28,12 +47,27 @@ def FFT(img):
 def IFFT(fft):
     mt = fft.memType
     dt = fft.cmpRepr
-    fft.MoveToGPU()
-    fft.AmPh2ReIm()
-    ifft = imsup.Image(fft.height, fft.width, imsup.Image.cmp['CRI'], imsup.Image.mem['GPU'])
-    cufft.ifft(fft.reIm, ifft.reIm)
-    fft.ChangeComplexRepr(dt)
-    fft.ChangeMemoryType(mt)
+
+    if cufft is not None:
+        fft.MoveToGPU()
+        fft.AmPh2ReIm()
+
+        ifft = imsup.Image(fft.height, fft.width, imsup.Image.cmp['CRI'], imsup.Image.mem['GPU'])
+        cufft.ifft(fft.reIm, ifft.reIm)
+
+        fft.ChangeComplexRepr(dt)
+        fft.ChangeMemoryType(mt)
+    else:
+        fft.AmPh2ReIm()
+        fft.MoveToCPU()
+
+        ifft = imsup.Image(fft.height, fft.width, imsup.Image.cmp['CRI'], imsup.Image.mem['CPU'])
+        ifft.reIm = np.fft.ifft2(fft.reIm).astype(np.complex64)
+
+        fft.ChangeMemoryType(mt)
+        ifft.ChangeMemoryType(mt)
+        fft.ChangeComplexRepr(dt)
+
     return ifft
 
 # -------------------------------------------------------------------
