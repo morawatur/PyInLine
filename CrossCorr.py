@@ -2,8 +2,8 @@ import numpy as np
 from numba import cuda
 
 try:
-    from accelerate.cuda import fft as cufft
-    # from pyculib import fft as cufft
+    # from accelerate.cuda import fft as cufft
+    from pyculib import fft as cufft
 except ImportError:
     cufft = None
 
