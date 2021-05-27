@@ -76,6 +76,7 @@ def calc_ctf(img_dim, px_dim, defocus, Cs=const.Cs, A1=ab.PolarComplex(const.A1_
     # if aperture > 0:
     #     ctf = InsertAperture(ctf, aperture)
     # -----
+    ctf.MoveToCPU()
     return ctf
 
 # -------------------------------------------------------------------
