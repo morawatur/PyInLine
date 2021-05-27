@@ -1,6 +1,7 @@
 import math
 import numpy as np
 from numba import cuda
+from scipy import signal as sig
 
 import aberrations as ab
 import Constants as const
@@ -72,8 +73,8 @@ def calc_ctf(img_dim, px_dim, defocus, Cs=const.Cs, A1=ab.PolarComplex(const.A1_
                                       A1_im_coeff, Cs_spat_coeff, conv_ang_coeff, df_spread_coeff)
     ctf.defocus = defocus
     # -----
-    if aperture > 0:
-        ctf = InsertAperture(ctf, aperture)
+    # if aperture > 0:
+    #     ctf = InsertAperture(ctf, aperture)
     # -----
     return ctf
 
@@ -113,9 +114,7 @@ def InsertAperture(img, ap_radius):
 # -------------------------------------------------------------------
 
 def mult_by_hann_window(img, N=100):
-    new_img = imsup.CopyImage(img)
-    new_img.ReIm2AmPh()
-    new_img.MoveToCPU()
+    new_img = imsup.copy_am_ph_image(img)
 
     hann = np.hanning(N)
     hann_2d = np.sqrt(np.outer(hann, hann))
@@ -128,6 +127,41 @@ def mult_by_hann_window(img, N=100):
     new_img.amPh.ph[hmin:hmax, hmin:hmax] *= hann_2d
 
     return new_img
+
+# -------------------------------------------------------------------
+
+def insert_tukey_aperture(img, ap_dia, smooth_w):
+    img_ap = imsup.copy_am_ph_image(img)
+
+    iw = img_ap.width
+    ir = iw // 2
+
+    tw = ap_dia + 2 * smooth_w
+    tr = tw // 2
+    alpha = 2 * smooth_w / tw
+
+    ty, tx = np.ogrid[-tr:tw-tr, -tr:tw-tr]
+    t_ss = tx * tx + ty * ty
+    t_mask_1 = t_ss < tr * tr
+    rc_dists = np.sqrt(t_ss).astype(np.int32)
+
+    tuk_win = sig.tukey(tw, alpha)[tr:]
+    tuk_win_2d = np.zeros((tw, tw), dtype=tuk_win.dtype)
+    tuk_win_2d[t_mask_1] = tuk_win[rc_dists[t_mask_1]]
+
+    iy, ix = np.ogrid[-ir:iw-ir, -ir:iw-ir]
+    i_mask_0 = ix * ix + iy * iy >= tr * tr
+
+    t1 = (iw - tw) // 2
+    t2 = t1 + tw
+
+    img_ap.amPh.am[i_mask_0] = 0.0
+    img_ap.amPh.ph[i_mask_0] = 0.0
+
+    img_ap.amPh.am[t1:t2, t1:t2] *= tuk_win_2d
+    img_ap.amPh.ph[t1:t2, t1:t2] *= tuk_win_2d
+
+    return img_ap
 
 # -------------------------------------------------------------------
 
@@ -148,12 +182,8 @@ def PropagateWave(img, ctf):
     fft = cc.FFT(img)
     fft.ReIm2AmPh()
 
-    # ctf = cc.Diff2FFT(ctf)
-    ctf.ReIm2AmPh()
-    ctf.MoveToCPU()
     ctf = cc.fft2diff_cpu(ctf)
     ctf.MoveToGPU()
-    ctf.ReIm2AmPh()
 
     fftProp = imsup.ImageExp(img.height, img.width, imsup.Image.cmp['CAP'], imsup.Image.mem['GPU'])
     fftProp.amPh = imsup.MultAmPhMatrices(fft.amPh, ctf.amPh)
@@ -185,7 +215,8 @@ def PropagateToFocus(img, use_other_aberrs=True, aper=const.aperture, hann_width
         ctf = calc_ctf(img.width, img.px_dim, -img.defocus, Cs=-const.Cs,
                        A1=ab.PolarComplex(const.A1_amp, const.A1_phs), df_spread=const.df_spread,
                        conv_angle=const.conv_angle, aperture=aper, A1_dir=-1)
-        ctf2 = mult_by_hann_window(ctf, N=hann_width)
+        # ctf2 = mult_by_hann_window(ctf, N=hann_width)
+        ctf2 = insert_tukey_aperture(ctf, 2 * aper, 20)
         ctf.ClearGPUMemory()
     else:
         ctf2 = calc_ctf(img.width, img.px_dim, -img.defocus, Cs=0, A1=ab.PolarComplex(0, 0),
@@ -209,7 +240,8 @@ def PropagateBackToDefocus(img, defocus, use_other_aberrs=True, aper=const.apert
         ctf = calc_ctf(img.width, img.px_dim, defocus, Cs=const.Cs,
                        A1=ab.PolarComplex(const.A1_amp, const.A1_phs), df_spread=const.df_spread,
                        conv_angle=const.conv_angle, aperture=aper, A1_dir=1)
-        ctf2 = mult_by_hann_window(ctf, N=hann_width)
+        # ctf2 = mult_by_hann_window(ctf, N=hann_width)
+        ctf2 = insert_tukey_aperture(ctf, 2 * aper, 20)
         ctf.ClearGPUMemory()
     else:
         ctf2 = calc_ctf(img.width, img.px_dim, defocus, Cs=0, A1=ab.PolarComplex(0, 0),
