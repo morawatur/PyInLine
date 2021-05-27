@@ -320,7 +320,7 @@ def ReIm2AmPh_dev(reIm, am, ph):
     if x >= reIm.shape[0] or y >= reIm.shape[1]:
         return
     # am[x, y] = abs(reIm[x, y])
-    # ph[x, y] = cm.phase(reIm[x, y])
+    # ph[x, y] = cmath.phase(reIm[x, y])
     am[x, y], ph[x, y] = cmath.polar(reIm[x, y])
 
 #-------------------------------------------------------------------
@@ -330,7 +330,7 @@ def AmPh2ReIm_dev(am, ph, reIm):
     x, y = cuda.grid(2)
     if x >= am.shape[0] or y >= am.shape[1]:
         return
-    # reIm[x, y] = am[x, y] * cm.cos(ph[x, y]) + 1j * am[x, y] * cm.sin(ph[x, y])
+    # reIm[x, y] = am[x, y] * cmath.cos(ph[x, y]) + 1j * am[x, y] * cmath.sin(ph[x, y])
     reIm[x, y] = cmath.rect(am[x, y], ph[x, y])
 
 #-------------------------------------------------------------------
