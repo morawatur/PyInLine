@@ -216,23 +216,13 @@ def PropagateToFocus(img, use_other_aberrs=True, aper=const.aperture, hann_width
         ctf = calc_ctf(img.width, img.px_dim, -img.defocus, Cs=-const.Cs,
                        A1=ab.PolarComplex(const.A1_amp, const.A1_phs), df_spread=const.df_spread,
                        conv_angle=const.conv_angle, aperture=aper, A1_dir=-1)
-        # ctf2 = mult_by_hann_window(ctf, N=hann_width)
-        ctf2 = insert_tukey_aperture(ctf, 2 * aper, 20)
-        ctf.ClearGPUMemory()
+        # ctf = mult_by_hann_window(ctf, N=hann_width)
+        ctf = insert_tukey_aperture(ctf, 2 * aper, 20)
     else:
-        ctf2 = calc_ctf(img.width, img.px_dim, -img.defocus, Cs=0, A1=ab.PolarComplex(0, 0),
+        ctf = calc_ctf(img.width, img.px_dim, -img.defocus, Cs=0, A1=ab.PolarComplex(0, 0),
                         df_spread=0, conv_angle=0, aperture=0, A1_dir=-1)
 
-    # proba uzycia FFT obrazu jako fazy funkcji przenoszenia kontrastu
-    # fft = cc.FFT(img)
-    # fft.ReIm2AmPh()
-    # fft.MoveToCPU()
-    # fft = cc.fft2diff_cpu(fft)
-    # ctf2 = imsup.ImageExp(img.height, img.width, fft.cmpRepr, fft.memType)
-    # ctf2.amPh.am = np.copy(np.ones(ctf2.amPh.am.shape, dtype=np.float32))
-    # ctf2.amPh.ph = np.copy(-fft.amPh.am)
-
-    return PropagateWave(img, ctf2)
+    return PropagateWave(img, ctf)
 
 # -------------------------------------------------------------------
 
@@ -241,14 +231,13 @@ def PropagateBackToDefocus(img, defocus, use_other_aberrs=True, aper=const.apert
         ctf = calc_ctf(img.width, img.px_dim, defocus, Cs=const.Cs,
                        A1=ab.PolarComplex(const.A1_amp, const.A1_phs), df_spread=const.df_spread,
                        conv_angle=const.conv_angle, aperture=aper, A1_dir=1)
-        # ctf2 = mult_by_hann_window(ctf, N=hann_width)
-        ctf2 = insert_tukey_aperture(ctf, 2 * aper, 20)
-        ctf.ClearGPUMemory()
+        # ctf = mult_by_hann_window(ctf, N=hann_width)
+        ctf = insert_tukey_aperture(ctf, 2 * aper, 20)
     else:
-        ctf2 = calc_ctf(img.width, img.px_dim, defocus, Cs=0, A1=ab.PolarComplex(0, 0),
+        ctf = calc_ctf(img.width, img.px_dim, defocus, Cs=0, A1=ab.PolarComplex(0, 0),
                         df_spread=0, conv_angle=0, aperture=0, A1_dir=1)
 
-    return PropagateWave(img, ctf2)
+    return PropagateWave(img, ctf)
 
 # -------------------------------------------------------------------
 
