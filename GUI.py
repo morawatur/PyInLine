@@ -2102,8 +2102,8 @@ def cross_corr_images(img_list, n_div, frag_coords, df_min=0.0, df_max=-1.0, df_
         df_max = df_min + 1.0
         df_step = 2.0
     for img in img_list[1:]:
-        mcf_best = cc.MaximizeMCFCore(img.prev, img, n_div, frag_coords,
-                                      df_min, df_max, df_step, use_aberrs, aper, smooth_w)
+        mcf_best = cc.MaximizeMCFCore(img.prev, img, n_div, frag_coords, df_min, df_max, df_step,
+                                      use_aberrs, aper, smooth_w)
         new_shift = cc.GetShift(mcf_best)
         img.shift = [ sp + sn for sp, sn in zip(img.prev.shift, new_shift) ]
         # img.shift = list(np.array(img.shift) + np.array(new_shift))

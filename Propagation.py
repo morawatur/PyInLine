@@ -211,8 +211,8 @@ def PropagateWave(img, ctf):
 def PropagateToFocus(img, use_other_aberrs=True, aper=const.aperture, smooth_w=const.smooth_width):
     if use_other_aberrs:
         ctf = calc_ctf(img.width, img.px_dim, -img.defocus, Cs=-const.Cs,
-                       A1=ab.PolarComplex(const.A1_amp, const.A1_phs), df_spread=const.df_spread,
-                       conv_angle=const.conv_angle, A1_dir=-1)
+                       A1=ab.PolarComplex(const.A1_amp, const.A1_phs),
+                       df_spread=const.df_spread, conv_angle=const.conv_angle, A1_dir=-1)
     else:
         ctf = calc_ctf(img.width, img.px_dim, -img.defocus, Cs=0, A1=ab.PolarComplex(0, 0),
                        df_spread=0, conv_angle=0, A1_dir=-1)
@@ -229,8 +229,8 @@ def PropagateToFocus(img, use_other_aberrs=True, aper=const.aperture, smooth_w=c
 def PropagateBackToDefocus(img, defocus, use_other_aberrs=True, aper=const.aperture, smooth_w=const.smooth_width):
     if use_other_aberrs:
         ctf = calc_ctf(img.width, img.px_dim, defocus, Cs=const.Cs,
-                       A1=ab.PolarComplex(const.A1_amp, const.A1_phs), df_spread=const.df_spread,
-                       conv_angle=const.conv_angle, A1_dir=1)
+                       A1=ab.PolarComplex(const.A1_amp, const.A1_phs),
+                       df_spread=const.df_spread, conv_angle=const.conv_angle, A1_dir=1)
     else:
         ctf = calc_ctf(img.width, img.px_dim, defocus, Cs=0, A1=ab.PolarComplex(0, 0),
                        df_spread=0, conv_angle=0, A1_dir=1)
