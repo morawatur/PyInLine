@@ -13,10 +13,10 @@ def complex2polar(x):
 # ---------------------------------------------------------------
 
 class PolarComplex:
-    def __init__(self, am, ph):
-        self.amp = np.copy(am)
-        self.phs = np.copy(ph)
-        self.A1 = polar2complex(am, ph)
+    def __init__(self, amp, phs):
+        self.amp = amp
+        self.phs = phs
+        self.A1 = polar2complex(amp, phs)
 
     def real(self):
         return self.A1.real
@@ -31,12 +31,12 @@ class PolarComplex:
         self.amp, self.phs = complex2polar(self.A1)
 
     def set_re_im(self, re, im):
-        self.A1 = np.complex64(re, im)
+        self.A1 = re + 1j * im
         self.set_ap_from_ri()
 
-    def set_am_ph(self, am, ph):
-        self.amp = am
-        self.phs = ph
+    def set_am_ph(self, amp, phs):
+        self.amp = amp
+        self.phs = phs
         self.set_ri_from_ap()
 
 # ---------------------------------------------------------------
