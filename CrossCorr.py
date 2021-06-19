@@ -252,7 +252,7 @@ def MaximizeMCF(img1, img2, dfStep0):
 
 # -------------------------------------------------------------------
 
-def MaximizeMCFCore(img1, img2, nDiv, fragCoords, dfStepMin, dfStepMax, dfStepChange, use_other_aberrs=False, aper=const.aperture):
+def MaximizeMCFCore(img1, img2, nDiv, fragCoords, dfStepMin, dfStepMax, dfStepChange, use_other_aberrs=False, aper=const.aperture, smooth_w=const.smooth_width):
     # defocus parameters are given in nm
     dfStepMin, dfStepMax, dfStepChange = np.array([dfStepMin, dfStepMax, dfStepChange]) * 1e-9
     mcfMax = 0.0
@@ -261,7 +261,7 @@ def MaximizeMCFCore(img1, img2, nDiv, fragCoords, dfStepMin, dfStepMax, dfStepCh
     mcfBest.defocus = dfStepBest
 
     for dfStep in frange(dfStepMin, dfStepMax, dfStepChange):
-        img1Prop = prop.PropagateBackToDefocus(img1, dfStep, use_other_aberrs, aper)
+        img1Prop = prop.PropagateBackToDefocus(img1, dfStep, use_other_aberrs, aper, smooth_w)
         mcf = CalcPartialCrossCorrFun(img1Prop, img2, nDiv, fragCoords)
         mcf.MoveToCPU()
         mcfMaxCurr = np.max(mcf.amPh.am)

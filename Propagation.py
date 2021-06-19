@@ -208,7 +208,7 @@ def PropagateWave(img, ctf):
 
 # -------------------------------------------------------------------
 
-def PropagateToFocus(img, use_other_aberrs=True, aper=const.aperture):
+def PropagateToFocus(img, use_other_aberrs=True, aper=const.aperture, smooth_w=const.smooth_width):
     if use_other_aberrs:
         ctf = calc_ctf(img.width, img.px_dim, -img.defocus, Cs=-const.Cs,
                        A1=ab.PolarComplex(const.A1_amp, const.A1_phs), df_spread=const.df_spread,
@@ -218,16 +218,15 @@ def PropagateToFocus(img, use_other_aberrs=True, aper=const.aperture):
                        df_spread=0, conv_angle=0, A1_dir=-1)
 
     if aper > 0:
-        sm_w = const.smooth_width
-        if aper + 2 * sm_w > img.width:
-            aper = img.width - 2 * sm_w
-        ctf = insert_tukey_aperture(ctf, aper, sm_w)
+        if aper + 2 * smooth_w > img.width:
+            aper = img.width - 2 * smooth_w
+        ctf = insert_tukey_aperture(ctf, aper, smooth_w)
 
     return PropagateWave(img, ctf)
 
 # -------------------------------------------------------------------
 
-def PropagateBackToDefocus(img, defocus, use_other_aberrs=True, aper=const.aperture):
+def PropagateBackToDefocus(img, defocus, use_other_aberrs=True, aper=const.aperture, smooth_w=const.smooth_width):
     if use_other_aberrs:
         ctf = calc_ctf(img.width, img.px_dim, defocus, Cs=const.Cs,
                        A1=ab.PolarComplex(const.A1_amp, const.A1_phs), df_spread=const.df_spread,
@@ -237,16 +236,15 @@ def PropagateBackToDefocus(img, defocus, use_other_aberrs=True, aper=const.apert
                        df_spread=0, conv_angle=0, A1_dir=1)
 
     if aper > 0:
-        sm_w = const.smooth_width
-        if aper + 2 * sm_w > img.width:
-            aper = img.width - 2 * sm_w
-        ctf = insert_tukey_aperture(ctf, aper, sm_w)
+        if aper + 2 * smooth_w > img.width:
+            aper = img.width - 2 * smooth_w
+        ctf = insert_tukey_aperture(ctf, aper, smooth_w)
 
     return PropagateWave(img, ctf)
 
 # -------------------------------------------------------------------
 
-def run_backprop_iter(imgs_to_ewr, use_aberrs=False, ap=const.aperture):
+def run_backprop_iter(imgs_to_ewr, use_aberrs=False, aper=const.aperture, smooth_w=const.smooth_width):
     n_imgs = len(imgs_to_ewr)
     img_w, img_h = imgs_to_ewr[0].width, imgs_to_ewr[0].height
     # exit_wave = imsup.ImageExp(img_h, img_w, imsup.Image.cmp['CRI'], imsup.Image.mem['GPU'], px_dim_sz=imgs_to_ewr[0].px_dim)
@@ -254,7 +252,7 @@ def run_backprop_iter(imgs_to_ewr, use_aberrs=False, ap=const.aperture):
 
     for img, idx in zip(imgs_to_ewr, range(0, n_imgs)):
         img.MoveToGPU()
-        img = PropagateToFocus(img, use_other_aberrs=use_aberrs, aper=ap)
+        img = PropagateToFocus(img, use_aberrs, aper, smooth_w)
         # img.AmPh2ReIm()
         img.ReIm2AmPh()             # !!!
         img.MoveToCPU()             # !!!
@@ -273,12 +271,12 @@ def run_backprop_iter(imgs_to_ewr, use_aberrs=False, ap=const.aperture):
 
 # -------------------------------------------------------------------
 
-def run_forwprop_iter(exit_wave, imgs_to_ewr, use_aberrs=False, ap=const.aperture):
+def run_forwprop_iter(exit_wave, imgs_to_ewr, use_aberrs=False, aper=const.aperture, smooth_w=const.smooth_width):
     n_imgs = len(imgs_to_ewr)
 
     tot_error = 0.0
     for img, idx in zip(imgs_to_ewr, range(0, n_imgs)):
-        imgs_to_ewr[idx] = PropagateBackToDefocus(exit_wave, img.defocus, use_other_aberrs=use_aberrs, aper=ap)
+        imgs_to_ewr[idx] = PropagateBackToDefocus(exit_wave, img.defocus, use_aberrs, aper, smooth_w)
         img.MoveToCPU()
         sse = calc_sum_squared_error(img.amPh.am, imgs_to_ewr[idx].amPh.am)
         print('Pair {0}{1}: SSE = {2:.3f} %'.format('0' if idx < 9 else '', idx+1, sse * 100))
@@ -300,14 +298,14 @@ def calc_sum_squared_error(arr_ref, arr):
 
 # -------------------------------------------------------------------
 
-def run_iteration_of_iwfr(imgs_to_ewr, use_aberrs=False, ap=const.aperture):
+def run_iteration_of_iwfr(imgs_to_ewr, use_aberrs=False, aper=const.aperture, smooth_w=const.smooth_width):
     # n_imgs = len(imgs_to_ewr)
     # img_w, img_h = imgs_to_ewr[0].width, imgs_to_ewr[0].height
     # exit_wave = imsup.ImageExp(img_h, img_w, imsup.Image.cmp['CRI'], imsup.Image.mem['GPU'])
     #
     # for img, idx in zip(imgs_to_ewr, range(0, n_imgs)):
     #     img.MoveToGPU()
-    #     img = PropagateToFocus(img, use_other_aberrs=use_aberrs, aper=ap)
+    #     img = PropagateToFocus(img, use_aberrs, aper, smooth_w)
     #     img.AmPh2ReIm()
     #     exit_wave.reIm = arrsup.AddArrayToArray(exit_wave.reIm, img.reIm)
     #     # exit_wave.reIm = arrsup.AddTwoArrays(exit_wave.reIm, img.reIm)
@@ -315,14 +313,14 @@ def run_iteration_of_iwfr(imgs_to_ewr, use_aberrs=False, ap=const.aperture):
     # exit_wave.reIm = arrsup.MultArrayByScalar(exit_wave.reIm, 1 / n_imgs)
     #
     # for img, idx in zip(imgs_to_ewr, range(0, n_imgs)):
-    #     imgs_to_ewr[idx] = PropagateBackToDefocus(exit_wave, img.defocus, use_other_aberrs=use_aberrs, aper=ap)
+    #     imgs_to_ewr[idx] = PropagateBackToDefocus(exit_wave, img.defocus, use_aberrs, aper, smooth_w)
     #     # print(imgs_to_ewr[idx].memType, img.memType)
     #     img.MoveToCPU()
     #     # print(imgs_to_ewr[idx].memType, img.memType)
     #     imgs_to_ewr[idx].amPh.am = np.copy(img.amPh.am)  # restore original amplitude
 
-    exit_wave = run_backprop_iter(imgs_to_ewr, use_aberrs, ap)
-    run_forwprop_iter(imgs_to_ewr, exit_wave, use_aberrs, ap)
+    exit_wave = run_backprop_iter(imgs_to_ewr, use_aberrs, aper, smooth_w)
+    run_forwprop_iter(imgs_to_ewr, exit_wave, use_aberrs, aper, smooth_w)
 
     return imgs_to_ewr, exit_wave
 
@@ -352,7 +350,7 @@ def run_iwfr(imgs_to_iwfr, n_iters):
 
 # -------------------------------------------------------------------
 
-def simulate_images(exit_wave, df1, df2=None, df3=None, use_aberrs=True, A1_amp=0.0, A1_phs=0.0, aper=const.aperture):
+def simulate_images(exit_wave, df1, df2=None, df3=None, use_aberrs=True, A1_amp=0.0, A1_phs=0.0, aper=const.aperture, smooth_w=const.smooth_width):
     if df2 is None or df3 is None:
         df2 = df1 + 1
         df3 = 2
@@ -365,7 +363,7 @@ def simulate_images(exit_wave, df1, df2=None, df3=None, use_aberrs=True, A1_amp=
 
     for df in cc.frange(df1, df2, df3):
         print('Sim. {0:.2f} nm'.format(df * 1e9))
-        img = PropagateBackToDefocus(exit_wave, df, use_aberrs, aper)
+        img = PropagateBackToDefocus(exit_wave, df, use_aberrs, aper, smooth_w)
         img.MoveToCPU()
         img.defocus = df
         sim_imgs.append(img)
