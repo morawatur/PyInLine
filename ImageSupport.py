@@ -789,23 +789,17 @@ def ClearImageData(img):
 
 #-------------------------------------------------------------------
 
+def create_empty_image():
+    img = ImageExp(0, 0, cmpRepr=Image.cmp['CAP'], memType=Image.mem['CPU'])
+    return img
+
+#-------------------------------------------------------------------
+
 def copy_re_im_image(img):
     img.MoveToCPU()
     img_copy = ImageExp(img.height, img.width, cmpRepr=img.cmpRepr, memType=img.memType, defocus=img.defocus, num=img.numInSeries)
     img_copy.reIm = np.copy(img.amPh.reIm)
-
-    if img.prev is not None:
-        img_copy.prev = img.prev
-    if img.next is not None:
-        img_copy.next = img.next
-
     return img_copy
-
-#-------------------------------------------------------------------
-
-def create_empty_image():
-    img = ImageExp(0, 0, cmpRepr=Image.cmp['CAP'], memType=Image.mem['CPU'])
-    return img
 
 #-------------------------------------------------------------------
 
@@ -813,16 +807,13 @@ def copy_am_ph_image(img):
     img.MoveToCPU()
     img_copy = ImageExp(img.height, img.width, cmpRepr=img.cmpRepr, memType=img.memType,
                         defocus=img.defocus, num=img.numInSeries, px_dim_sz=img.px_dim)
+
     img_copy.amPh.am = np.copy(img.amPh.am)
     img_copy.amPh.ph = np.copy(img.amPh.ph)
+
     if hasattr(img, 'buffer'):
         img_copy.buffer.am = np.copy(img.buffer.am)
         img_copy.buffer.ph = np.copy(img.buffer.ph)
-
-    if img.prev is not None:
-        img_copy.prev = img.prev
-    if img.next is not None:
-        img_copy.next = img.next
 
     return img_copy
 
