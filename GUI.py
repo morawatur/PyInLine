@@ -824,13 +824,13 @@ class InLineWidget(QtWidgets.QWidget):
         df_sim_2_label = QtWidgets.QLabel('Stop defocus [nm]', self)
         df_sim_3_label = QtWidgets.QLabel('Step [nm]', self)
         A1_sim_label = QtWidgets.QLabel('A1 [nm]', self)
-        phi1_sim_label = QtWidgets.QLabel('A1 angle [deg]', self)
+        A1_ang_sim_label = QtWidgets.QLabel('A1 angle [deg]', self)
 
         self.df_sim_1_input = QtWidgets.QLineEdit('0', self)
         self.df_sim_2_input = QtWidgets.QLineEdit('0', self)
         self.df_sim_3_input = QtWidgets.QLineEdit('0', self)
         self.A1_sim_input = QtWidgets.QLineEdit('0', self)
-        self.phi1_sim_input = QtWidgets.QLineEdit('0', self)
+        self.A1_ang_sim_input = QtWidgets.QLineEdit('0', self)
 
         sim_button.clicked.connect(self.simulate_images_for_df)
 
@@ -853,8 +853,8 @@ class InLineWidget(QtWidgets.QWidget):
         self.tab_sim.layout.addWidget(self.df_sim_3_input, 2, 4)
         self.tab_sim.layout.addWidget(A1_sim_label, 4, 2)
         self.tab_sim.layout.addWidget(self.A1_sim_input, 4, 3)
-        self.tab_sim.layout.addWidget(phi1_sim_label, 5, 2)
-        self.tab_sim.layout.addWidget(self.phi1_sim_input, 5, 3)
+        self.tab_sim.layout.addWidget(A1_ang_sim_label, 5, 2)
+        self.tab_sim.layout.addWidget(self.A1_ang_sim_input, 5, 3)
         self.tab_sim.setLayout(self.tab_sim.layout)
 
         # ------------------------------
@@ -2006,17 +2006,17 @@ class InLineWidget(QtWidgets.QWidget):
         df3 = float(self.df_sim_3_input.text()) * 1e-9
         use_aberrs = self.use_aberrs_checkbox.isChecked()
         A1 = float(self.A1_sim_input.text()) * 1e-9
-        phi1 = float(self.phi1_sim_input.text())
+        A1_ang = float(self.A1_ang_sim_input.text())
         aper = int(self.aperture_input.text())
         smooth_w = int(self.smooth_width_input.text())
 
         print('df1 = {0:.0f} nm\ndf2 = {1:.0f} nm\ndf3 = {2:.0f} nm'.format(df1 * 1e9, df2 * 1e9, df3 * 1e9))
-        print('A1 amp = {0:.0f} nm\nA1 ang = {1:.0f} deg\nAperture = {2:.0f} px'.format(A1 * 1e9, phi1, aper))
+        print('A1 amp = {0:.0f} nm\nA1 ang = {1:.0f} deg\nAperture = {2:.0f} px'.format(A1 * 1e9, A1_ang, aper))
 
         # const.A1_amp = A1
-        # const.A1_phs = phi1
+        # const.A1_phs = 2 * imsup.Radians(A1_ang)
 
-        sim_imgs = prop.simulate_images(curr_img, df1, df2, df3, use_aberrs, A1, phi1, aper, smooth_w)
+        sim_imgs = prop.simulate_images(curr_img, df1, df2, df3, use_aberrs, A1, 2 * imsup.Radians(A1_ang), aper, smooth_w)
         idx = 1
         for img in sim_imgs:
             img = imsup.create_imgexp_from_img(img)
