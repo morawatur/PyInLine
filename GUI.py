@@ -122,9 +122,8 @@ class LabelExt(QtWidgets.QLabel):
         self.show_labs = True
         self.show_grid = True
         self.show_aper = False
-        self.show_hann = False
         self.aper_diam = 0
-        self.hann_width = 0
+        self.smooth_width = 0
         self.gain = 0.0
         self.bias = 0.0
         self.gamma = 0.0
@@ -178,18 +177,19 @@ class LabelExt(QtWidgets.QLabel):
             qp.drawRect(square)
 
         if self.show_aper:
+            # draw aperture
             linePen.setStyle(QtCore.Qt.SolidLine)
             linePen.setColor(QtCore.Qt.red)
             qp.setPen(linePen)
             tl_x = (const.ccWidgetDim - self.aper_diam) // 2
             qp.drawEllipse(tl_x, tl_x, self.aper_diam, self.aper_diam)
 
-        if self.show_hann:
-            linePen.setStyle(QtCore.Qt.SolidLine)
+            # draw aperture with smoothed edges
             linePen.setColor(QtCore.Qt.blue)
             qp.setPen(linePen)
-            tl_x = (const.ccWidgetDim - self.hann_width) // 2
-            qp.drawRect(tl_x, tl_x, self.hann_width, self.hann_width)
+            sm_aper_diam = self.aper_diam + 2 * self.smooth_width
+            tl_x = (const.ccWidgetDim - sm_aper_diam) // 2
+            qp.drawEllipse(tl_x, tl_x, sm_aper_diam, sm_aper_diam)
 
         if len(self.frag_coords) > 0:
             qp.setPen(QtCore.Qt.NoPen)
@@ -725,7 +725,7 @@ class InLineWidget(QtWidgets.QWidget):
         start_num_label = QtWidgets.QLabel('Starting image number', self)
         n_to_ewr_label = QtWidgets.QLabel('Num. of images to use', self)
         aperture_label = QtWidgets.QLabel('Aperture radius [px]', self)
-        hann_win_label = QtWidgets.QLabel('Hann window [px]', self)
+        smooth_width_label = QtWidgets.QLabel('Smooth width [px]', self)
         amp_factor_label = QtWidgets.QLabel('Amp. factor', self)
         int_width_label = QtWidgets.QLabel('Profile width [px]', self)
         prof_depth_label = QtWidgets.QLabel('Profile depth [imgs]', self)
@@ -735,7 +735,7 @@ class InLineWidget(QtWidgets.QWidget):
         self.n_to_ewr_input = QtWidgets.QLineEdit(str(self.display.n_imgs), self)
         self.n_iters_input = QtWidgets.QLineEdit('10', self)
         self.aperture_input = QtWidgets.QLineEdit(str(const.aperture), self)
-        self.hann_win_input = QtWidgets.QLineEdit(str(const.hann_win), self)
+        self.smooth_width_input = QtWidgets.QLineEdit(str(const.smooth_width), self)
         self.amp_factor_input = QtWidgets.QLineEdit('2.0', self)
         self.int_width_input = QtWidgets.QLineEdit('1', self)
         self.prof_depth_input = QtWidgets.QLineEdit('10', self)
@@ -749,10 +749,6 @@ class InLineWidget(QtWidgets.QWidget):
         self.show_aperture_checkbox = QtWidgets.QCheckBox('display', self)
         self.show_aperture_checkbox.setChecked(False)
         self.show_aperture_checkbox.toggled.connect(self.toggle_aperture)
-
-        self.show_hann_win_checkbox = QtWidgets.QCheckBox('display', self)
-        self.show_hann_win_checkbox.setChecked(False)
-        self.show_hann_win_checkbox.toggled.connect(self.toggle_hann_win)
 
         run_ewr_next_button.clicked.connect(self.run_ewr_next_iters)
         reset_ewr_button.clicked.connect(self.reset_ewr)
@@ -782,10 +778,9 @@ class InLineWidget(QtWidgets.QWidget):
         grid_iwfr.addWidget(self.n_iters_input, 5, 2)
         grid_iwfr.addWidget(aperture_label, 2, 4)
         grid_iwfr.addWidget(self.aperture_input, 3, 4)
-        grid_iwfr.addWidget(hann_win_label, 4, 4)
-        grid_iwfr.addWidget(self.hann_win_input, 5, 4)
+        grid_iwfr.addWidget(smooth_width_label, 4, 4)
+        grid_iwfr.addWidget(self.smooth_width_input, 5, 4)
         grid_iwfr.addWidget(self.show_aperture_checkbox, 3, 5)
-        grid_iwfr.addWidget(self.show_hann_win_checkbox, 5, 5)
         grid_iwfr.addWidget(self.use_aberrs_checkbox, 1, 4)
         grid_iwfr.addWidget(self.det_abs_df_checkbox, 4, 1)
         grid_iwfr.addWidget(run_ewr_next_button, 5, 1)
@@ -1344,11 +1339,11 @@ class InLineWidget(QtWidgets.QWidget):
         in_foc_num = int(self.in_focus_input.text())
         n_to_ewr = int(self.n_to_ewr_input.text())
         ap_radius = int(self.aperture_input.text())
-        hann_win = int(self.hann_win_input.text())
+        sm_width = int(self.smooth_width_input.text())
 
         gen_info_bytes = bytearray(n_imgs)
         gen_info_bytes.extend(bytearray(start_num) + bytearray(in_foc_num) + bytearray(n_to_ewr))
-        gen_info_bytes.extend(bytearray(ap_radius) + bytearray(hann_win))
+        gen_info_bytes.extend(bytearray(ap_radius) + bytearray(sm_width))
         save_file.write(gen_info_bytes)
 
         for img in all_img_list:
@@ -1378,7 +1373,7 @@ class InLineWidget(QtWidgets.QWidget):
         for n in range(n_gen_items):
             gen_data.append(int(gen_info_bytes[n*int_sz:(n+1)*int_sz]))
 
-        n_imgs, start_num, in_foc_num, n_to_ewr, ap_radius, hann_win = gen_data
+        n_imgs, start_num, in_foc_num, n_to_ewr, ap_radius, sm_width = gen_data
         img_list = imsup.ImageList()
 
         for i in range(n_imgs):
@@ -1510,14 +1505,10 @@ class InLineWidget(QtWidgets.QWidget):
     def toggle_aperture(self):
         aper_r = int(self.aperture_input.text())
         aper_d = 2 * aper_r
+        smooth_w = int(self.smooth_width_input.text())
         self.display.aper_diam = real_to_disp_len(const.ccWidgetDim, self.display.image.width, aper_d)
+        self.display.smooth_width = real_to_disp_len(const.ccWidgetDim, self.display.image.width, smooth_w)
         self.display.show_aper = not self.display.show_aper
-        self.display.repaint()
-
-    def toggle_hann_win(self):
-        hann_w = int(self.hann_win_input.text())
-        self.display.hann_width = real_to_disp_len(const.ccWidgetDim, self.display.image.width, hann_w)
-        self.display.show_hann = not self.display.show_hann
         self.display.repaint()
 
     def cross_corr_with_prev(self):
