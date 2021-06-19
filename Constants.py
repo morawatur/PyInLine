@@ -20,10 +20,10 @@ focName = 'foc'
 cropName = 'crop'
 ccfMaxName = 'ccfmax'
 
-aperture = 0
-smooth_width = 20
+aperture = 0                        # aperture diameter
+smooth_width = 20                   # width of aperture edge smoothing
 
-dirac_const = 6.582119514e-16      # eV * s
+dirac_const = 6.582119514e-16       # eV * s
 
 A1_amp = 0.0
 A1_phs = 0.0

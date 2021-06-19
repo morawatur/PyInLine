@@ -122,7 +122,7 @@ class LabelExt(QtWidgets.QLabel):
         self.show_labs = True
         self.show_grid = True
         self.show_aper = False
-        self.aper_diam = 0
+        self.aper_dia = 0
         self.smooth_width = 0
         self.gain = 0.0
         self.bias = 0.0
@@ -181,15 +181,15 @@ class LabelExt(QtWidgets.QLabel):
             linePen.setStyle(QtCore.Qt.SolidLine)
             linePen.setColor(QtCore.Qt.red)
             qp.setPen(linePen)
-            tl_x = (const.ccWidgetDim - self.aper_diam) // 2
-            qp.drawEllipse(tl_x, tl_x, self.aper_diam, self.aper_diam)
+            tl_x = (const.ccWidgetDim - self.aper_dia) // 2
+            qp.drawEllipse(tl_x, tl_x, self.aper_dia, self.aper_dia)
 
             # draw aperture with smoothed edges
             linePen.setColor(QtCore.Qt.blue)
             qp.setPen(linePen)
-            sm_aper_diam = self.aper_diam + 2 * self.smooth_width
-            tl_x = (const.ccWidgetDim - sm_aper_diam) // 2
-            qp.drawEllipse(tl_x, tl_x, sm_aper_diam, sm_aper_diam)
+            sm_aper_dia = self.aper_dia + 2 * self.smooth_width
+            tl_x = (const.ccWidgetDim - sm_aper_dia) // 2
+            qp.drawEllipse(tl_x, tl_x, sm_aper_dia, sm_aper_dia)
 
         if len(self.frag_coords) > 0:
             qp.setPen(QtCore.Qt.NoPen)
@@ -724,7 +724,7 @@ class InLineWidget(QtWidgets.QWidget):
         in_focus_label = QtWidgets.QLabel('In-focus image number', self)
         start_num_label = QtWidgets.QLabel('Starting image number', self)
         n_to_ewr_label = QtWidgets.QLabel('Num. of images to use', self)
-        aperture_label = QtWidgets.QLabel('Aperture radius [px]', self)
+        aperture_label = QtWidgets.QLabel('Aperture diameter [px]', self)
         smooth_width_label = QtWidgets.QLabel('Smooth width [px]', self)
         amp_factor_label = QtWidgets.QLabel('Amp. factor', self)
         int_width_label = QtWidgets.QLabel('Profile width [px]', self)
@@ -1338,12 +1338,12 @@ class InLineWidget(QtWidgets.QWidget):
         start_num = int(self.start_num_input.text())
         in_foc_num = int(self.in_focus_input.text())
         n_to_ewr = int(self.n_to_ewr_input.text())
-        ap_radius = int(self.aperture_input.text())
+        ap_diam = int(self.aperture_input.text())
         sm_width = int(self.smooth_width_input.text())
 
         gen_info_bytes = bytearray(n_imgs)
         gen_info_bytes.extend(bytearray(start_num) + bytearray(in_foc_num) + bytearray(n_to_ewr))
-        gen_info_bytes.extend(bytearray(ap_radius) + bytearray(sm_width))
+        gen_info_bytes.extend(bytearray(ap_diam) + bytearray(sm_width))
         save_file.write(gen_info_bytes)
 
         for img in all_img_list:
@@ -1503,10 +1503,9 @@ class InLineWidget(QtWidgets.QWidget):
         self.log_scale_checkbox.setChecked(True)
 
     def toggle_aperture(self):
-        aper_r = int(self.aperture_input.text())
-        aper_d = 2 * aper_r
+        aper_d = int(self.aperture_input.text())
         smooth_w = int(self.smooth_width_input.text())
-        self.display.aper_diam = real_to_disp_len(const.ccWidgetDim, self.display.image.width, aper_d)
+        self.display.aper_dia = real_to_disp_len(const.ccWidgetDim, self.display.image.width, aper_d)
         self.display.smooth_width = real_to_disp_len(const.ccWidgetDim, self.display.image.width, smooth_w)
         self.display.show_aper = not self.display.show_aper
         self.display.repaint()

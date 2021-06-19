@@ -28,15 +28,16 @@ def find_img_max(img):
 
 #-------------------------------------------------------------------
 
-def insert_aperture(img, ap):
+def insert_aperture(img, ap_dia):
     img_ap = imsup.CopyImage(img)
     img_ap.ReIm2AmPh()
     img_ap.MoveToCPU()
 
     n = img_ap.width
     c = n // 2
+    ap_r = ap_dia // 2
     y, x = np.ogrid[-c:n - c, -c:n - c]
-    mask = x * x + y * y > ap * ap
+    mask = x * x + y * y > ap_r * ap_r
 
     img_ap.amPh.am[mask] = 0.0
     img_ap.amPh.ph[mask] = 0.0

@@ -100,11 +100,12 @@ def calc_ctf_dev(ctf_am, ctf_ph, img_dim, px_dim, df, df_cf, Cs_cf, A1_re_cf, A1
 
 # -------------------------------------------------------------------
 
-def InsertAperture(img, ap_radius):
+def InsertAperture(img, ap_diameter):
     img_dim = img.amPh.am.shape[0]
     blockDim, gridDim = ccfg.DetermineCudaConfig(img_dim)
     img.MoveToGPU()
     img_with_aperature = imsup.CopyImage(img)
+    ap_radius = ap_diameter // 2
     InsertAperture_dev[gridDim, blockDim](img_with_aperature.amPh.am, img_with_aperature.amPh.ph, img_dim, ap_radius)
     return img_with_aperature
 
@@ -218,9 +219,9 @@ def PropagateToFocus(img, use_other_aberrs=True, aper=const.aperture):
 
     if aper > 0:
         sm_w = const.smooth_width
-        if 2 * (aper + sm_w) > img.width:
-            aper = img.width // 2 - sm_w
-        ctf = insert_tukey_aperture(ctf, 2 * aper, sm_w)
+        if aper + 2 * sm_w > img.width:
+            aper = img.width - 2 * sm_w
+        ctf = insert_tukey_aperture(ctf, aper, sm_w)
 
     return PropagateWave(img, ctf)
 
@@ -237,9 +238,9 @@ def PropagateBackToDefocus(img, defocus, use_other_aberrs=True, aper=const.apert
 
     if aper > 0:
         sm_w = const.smooth_width
-        if 2 * (aper + sm_w) > img.width:
-            aper = img.width // 2 - sm_w
-        ctf = insert_tukey_aperture(ctf, 2 * aper, sm_w)
+        if aper + 2 * sm_w > img.width:
+            aper = img.width - 2 * sm_w
+        ctf = insert_tukey_aperture(ctf, aper, sm_w)
 
     return PropagateWave(img, ctf)
 
