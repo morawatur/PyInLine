@@ -1563,17 +1563,20 @@ class InLineWidget(QtWidgets.QWidget):
         print('Cross-correlation done!')
 
     def cross_corr_core(self, img_list_to_cc):
+        use_aberrs = self.use_aberrs_checkbox.isChecked()
+        aper = int(self.aperture_input.text())
         self.get_clicked_coords()
+
         if self.det_df_checkbox.isChecked():
             df_min = float(self.df_min_input.text())
             df_max = float(self.df_max_input.text())
             df_step = float(self.df_step_input.text())
             img_align_list = cross_corr_images(img_list_to_cc, self.btn_grid.n_rows, self.display.frag_coords[1:],
-                                               df_min=df_min, df_max=df_max, df_step=df_step)
+                                               df_min, df_max, df_step, use_aberrs, aper)
         else:
             df_const = float(self.df_min_input.text())
             img_align_list = cross_corr_images(img_list_to_cc, self.btn_grid.n_rows, self.display.frag_coords[1:],
-                                               df_min=df_const)
+                                               df_min=df_const, use_aberrs=use_aberrs, aper=aper)
         return img_align_list
 
     def align_shift(self):
@@ -1819,8 +1822,7 @@ class InLineWidget(QtWidgets.QWidget):
         for i in range(0, n_iters):
             print('Iteration no {0}...'.format(i + 1))
             imgs_to_iwfr, exit_wave = prop.run_iteration_of_iwfr(imgs_to_iwfr, self.use_aberrs_checkbox.isChecked(),
-                                                                 ap=int(self.aperture_input.text()),
-                                                                 hann=int(self.hann_win_input.text()))
+                                                                 ap=int(self.aperture_input.text()))
             ccfg.GetGPUMemoryUsed()
             exit_wave.ReIm2AmPh()
             exit_wave.MoveToCPU()
@@ -1873,22 +1875,20 @@ class InLineWidget(QtWidgets.QWidget):
                 if self.det_abs_df_checkbox.isChecked():
                     idx_in_focus = int(self.in_focus_input.text()) - start_img_num
                     cc.DetermineAbsoluteDefocus(self.curr_ewr_imgs, idx_in_focus)
-            # ---- (only 1st iteration) ----
 
+            # ---- (only 1st iteration) ----
             if it == 0:
                 for img in self.curr_ewr_imgs:
                     print('{0:.1f} nm'.format(img.defocus * 1e9))
 
             self.curr_exit_wave = prop.run_backprop_iter(self.curr_ewr_imgs,
                                                          self.use_aberrs_checkbox.isChecked(),
-                                                         ap=int(self.aperture_input.text()),
-                                                         hann=int(self.hann_win_input.text()))
+                                                         ap=int(self.aperture_input.text()))
 
             print('Forward propagation...')
             tot_error = prop.run_forwprop_iter(self.curr_exit_wave, self.curr_ewr_imgs,
                                                self.use_aberrs_checkbox.isChecked(),
-                                               ap=int(self.aperture_input.text()),
-                                               hann=int(self.hann_win_input.text()))
+                                               ap=int(self.aperture_input.text()))
 
             delta_tot_error = tot_error - self.last_tot_error
             self.last_tot_error = tot_error
@@ -2014,7 +2014,6 @@ class InLineWidget(QtWidgets.QWidget):
         A1 = float(self.A1_sim_input.text()) * 1e-9
         phi1 = float(self.phi1_sim_input.text())
         aper = int(self.aperture_input.text())
-        hann_win = int(self.hann_win_input.text())
 
         print('df1 = {0:.0f} nm\ndf2 = {1:.0f} nm\ndf3 = {2:.0f} nm'.format(df1 * 1e9, df2 * 1e9, df3 * 1e9))
         print('A1 amp = {0:.0f} nm\nA1 ang = {1:.0f} deg\nAperture = {2:.0f} px'.format(A1 * 1e9, phi1, aper))
@@ -2022,7 +2021,7 @@ class InLineWidget(QtWidgets.QWidget):
         # const.A1_amp = A1
         # const.A1_phs = phi1
 
-        sim_imgs = prop.simulate_images(curr_img, df1, df2, df3, use_aberrs, A1, phi1, aper, hann_win)
+        sim_imgs = prop.simulate_images(curr_img, df1, df2, df3, use_aberrs, A1, phi1, aper)
         idx = 1
         for img in sim_imgs:
             img = imsup.create_imgexp_from_img(img)
@@ -2100,7 +2099,7 @@ def rescale_image_buffer_to_window(img, win_dim):
 
 # --------------------------------------------------------
 
-def cross_corr_images(img_list, n_div, frag_coords, df_min=0.0, df_max=-1.0, df_step=1.0):
+def cross_corr_images(img_list, n_div, frag_coords, df_min=0.0, df_max=-1.0, df_step=1.0, use_aberrs=False, aper=const.aperture):
     img_align_list = imsup.ImageList()
     img_list[0].shift = [0, 0]
     img_align_list.append(img_list[0])
@@ -2109,7 +2108,7 @@ def cross_corr_images(img_list, n_div, frag_coords, df_min=0.0, df_max=-1.0, df_
         df_step = 2.0
     for img in img_list[1:]:
         mcf_best = cc.MaximizeMCFCore(img.prev, img, n_div, frag_coords,
-                                      df_min, df_max, df_step, use_other_aberrs=False)
+                                      df_min, df_max, df_step, use_aberrs, aper)
         new_shift = cc.GetShift(mcf_best)
         img.shift = [ sp + sn for sp, sn in zip(img.prev.shift, new_shift) ]
         # img.shift = list(np.array(img.shift) + np.array(new_shift))

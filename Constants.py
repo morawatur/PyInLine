@@ -20,11 +20,9 @@ focName = 'foc'
 cropName = 'crop'
 ccfMaxName = 'ccfmax'
 
-# aperture = 0
-# hann_win = 0
-
-aperture = 400
-hann_win = 850
+aperture = 0
+hann_win = 0
+smooth_width = 20
 
 dirac_const = 6.582119514e-16      # eV * s
 

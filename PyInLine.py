@@ -9,7 +9,6 @@ print('CUDA device in use: ' + dev.name.decode())
 gui.RunInLineWindow()
 
 # TODO list
-# Problemy:
-# 1 - przy powtornym zsuwaniu obrazow program sie wykrzacza
-# 2 - opcja zapisu/odczytu sesji (tj. aktualnych obrazow do plikow binarnych)
-# 2 - reczne przesuwanie obrazow nie dziala na wyswietlany obraz (buffer)   # fixed!
+# 1 - re-alignment doesn't work
+# 2 - save/load current session (i.e. save/load current images and parameters to/from binary files)
+# 3 - unify Python style
