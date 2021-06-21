@@ -400,6 +400,7 @@ class InLineWidget(QtWidgets.QWidget):
         self.plot_widget.canvas.setFixedHeight(350)
 
         self.curr_info_label = QtWidgets.QLabel('', self)
+        self.only_int = QtGui.QIntValidator()
         self.update_curr_info_label()
 
         # ------------------------------
@@ -441,6 +442,7 @@ class InLineWidget(QtWidgets.QWidget):
 
         self.name_input = QtWidgets.QLineEdit(self.display.image.name, self)
         self.n_to_zoom_input = QtWidgets.QLineEdit('1', self)
+        self.n_to_zoom_input.setValidator(self.only_int)
         self.session_name_input = QtWidgets.QLineEdit('session01', self)
 
         hbox_name = QtWidgets.QHBoxLayout()
@@ -627,6 +629,7 @@ class InLineWidget(QtWidgets.QWidget):
         df_step_label = QtWidgets.QLabel('delta df [nm]', self)
 
         self.n_to_cc_input = QtWidgets.QLineEdit(str(self.display.n_imgs), self)
+        self.n_to_cc_input.setValidator(self.only_int)
         self.df_min_input = QtWidgets.QLineEdit('0.0', self)
         self.df_max_input = QtWidgets.QLineEdit('0.0', self)
         self.df_step_input = QtWidgets.QLineEdit('0.0', self)
@@ -1276,7 +1279,12 @@ class InLineWidget(QtWidgets.QWidget):
     def zoom_n_fragments(self):
         curr_idx = self.display.image.numInSeries - 1
         if len(self.display.pointSets[curr_idx]) < 2:
-            print('You have to mark two points on the image in order to zoom!')
+            print('Mark two points to indicate the cropping area...')
+            return
+
+        n_to_zoom = int(self.n_to_zoom_input.text())
+        if n_to_zoom <= 0:
+            print('Invalid number of ROIs')
             return
 
         curr_img = self.display.image
@@ -1286,10 +1294,11 @@ class InLineWidget(QtWidgets.QWidget):
         real_tl_coords = CalcRealTLCoords(curr_img.width, disp_crop_coords)
         real_sq_coords = imsup.MakeSquareCoords(real_tl_coords)
 
-        n_to_zoom = np.int(self.n_to_zoom_input.text())
         first_img = imsup.GetFirstImage(curr_img)
-        insert_idx = curr_idx + n_to_zoom
         img_list = imsup.CreateImageListFromFirstImage(first_img)
+
+        n_to_zoom = min(n_to_zoom, len(img_list) - curr_idx)
+        insert_idx = curr_idx + n_to_zoom
         img_list2 = img_list[curr_idx:insert_idx]
 
         for img, n in zip(img_list2, range(insert_idx, insert_idx + n_to_zoom)):
