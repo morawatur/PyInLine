@@ -7,7 +7,7 @@ try:
 except ImportError:
     cufft = None
 
-import aberrations as ab
+import Aberrations as ab
 import Constants as const
 import CudaConfig as ccfg
 import ImageSupport as imsup

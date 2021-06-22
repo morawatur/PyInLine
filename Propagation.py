@@ -3,7 +3,7 @@ import numpy as np
 from numba import cuda
 from scipy import signal as sig
 
-import aberrations as ab
+import Aberrations as ab
 import Constants as const
 import CudaConfig as ccfg
 import ArraySupport as arrsup
