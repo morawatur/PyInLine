@@ -955,8 +955,8 @@ class InLineWidget(QtWidgets.QWidget):
         # self.reset_image_names()
 
         self.move(250, 50)
-        self.setWindowTitle('Holo window')
-        self.setWindowIcon(QtGui.QIcon('gui/world.png'))
+        self.setWindowTitle('PyInLine')
+        self.setWindowIcon(QtGui.QIcon('gui/icon.png'))
         self.show()
         self.setFixedSize(self.width(), self.height())  # disable window resizing
 
