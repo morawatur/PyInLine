@@ -1525,11 +1525,10 @@ class InLineWidget(QtWidgets.QWidget):
             print('There is no reference image!')
             return
         img_list_to_cc = imsup.CreateImageListFromImage(curr_img.prev, 2)
-        img_aligned = self.cross_corr_core(img_list_to_cc)[0]
-        self.insert_img_after_curr(img_aligned)
+        img_aligned = self.cross_corr_core(img_list_to_cc)[1]
         self.display.frag_coords = []
         self.btn_grid.create_grid()
-        self.go_to_next_image()
+        self.insert_img_after_curr(img_aligned)
 
     def cross_corr_n_images(self):
         n_to_cc = int(self.n_to_cc_input.text())
