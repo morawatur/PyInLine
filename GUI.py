@@ -1564,7 +1564,12 @@ class InLineWidget(QtWidgets.QWidget):
         use_aberrs = self.use_aberrs_checkbox.isChecked()
         aper = int(self.aperture_input.text())
         smooth_w = int(self.smooth_width_input.text())
+
         self.get_clicked_coords()
+        if len(self.display.frag_coords) == 1:
+            n_frags = self.display.frag_coords[0]
+            all_frag_coords = [(x, y) for y in range(n_frags) for x in range(n_frags)]
+            self.display.frag_coords.extend(all_frag_coords)
 
         if self.det_df_checkbox.isChecked():
             df_min = float(self.df_min_input.text())
