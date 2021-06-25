@@ -2110,7 +2110,7 @@ def rescale_image_buffer_to_window(img, win_dim):
 def cross_corr_images(img_list, n_div, frag_coords, df_min=0.0, df_max=-1.0, df_step=1.0, use_aberrs=False, aper=const.aperture, smooth_w=const.smooth_width):
     img_align_list = imsup.ImageList()
     img_list[0].shift = [0, 0]
-    img_align_list.append(img_list[0])
+    img_align_list.append(imsup.copy_am_ph_image(img_list[0]))
     if df_max < 0.0:
         df_max = df_min + 1.0
         df_step = 2.0
